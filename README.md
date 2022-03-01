@@ -11,3 +11,5 @@ i.e. A robust, flexible, and low cost way for me to re-create some of the early 
 As evident from the name, the Bus itself is based on a Minimalist implementation of the original Europe Card Bus (ECB) standard.
 
 More information can be found here: https://digicoolthings.com/minimalist-europe-card-bus-mecb
+
+![MECB_BoardMechanical](https://user-images.githubusercontent.com/41102492/156108345-406d51ec-9da2-4283-bedd-fe233dd7c1df.png)
