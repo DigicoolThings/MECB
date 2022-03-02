@@ -10,6 +10,10 @@ i.e. A robust, flexible, and low cost way for me to re-create some of the early 
 
 As evident from the name, the Bus itself is based on a Minimalist implementation of the original Europe Card Bus (ECB) standard.
 
-More information can be found here: https://digicoolthings.com/minimalist-europe-card-bus-mecb
+The included 'MECB_Template' folder contains a KiCAD v6 Template to enable fast-tracking new MECB board designs. This template also includes the standardised PLD for Address Decoding and is as illustrated in the standardised board mechanical specifications diagram below.
+
+To utilise the template, simply copy the entire folder and it's contents into your KiCAD v6 'KICAD_USER_TEMPLATE_DIR' path folder.
+
+More information on the Minimalist Europe Card Bus (MECB) can be found here: https://digicoolthings.com/minimalist-europe-card-bus-mecb
 
 ![MECB_BoardMechanical](https://user-images.githubusercontent.com/41102492/156108345-406d51ec-9da2-4283-bedd-fe233dd7c1df.png)
