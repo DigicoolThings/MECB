@@ -120,8 +120,8 @@ LoadRegLoop	LDA	,X+		; Load register data pointed to by X and increment X
 		RTS
 
 setVramBlock
-; Function:	Write specified byte to block of VRAM bytes
-; Parameters:	A - Bytes to write
+; Function:	Write a specified byte to a block of VRAM bytes
+; Parameters:	A - Byte to write
 ;		Y - Count of bytes to write
 ; Returns:	-
 ; Destroys:	A, Y
