@@ -1,0 +1,73 @@
+Name            MECB_ChipSelect_6809_CPU;
+Partno          CA0001;
+Revision        01;
+Date            01/2023;
+Designer        Greg;
+Company         Digicool Things;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/****************************************************************/
+/*                                                              */
+/* Note: For an ATV16V8 in Simple Mode pins 15 and 16           */
+/*  (center macrocells) are permanently configured as           */
+/*  combinatorial outputs.                                      */   
+/*                                                              */
+/****************************************************************/
+
+/*
+ * Inputs: Address Inputs were assigned based on the ECB bus pin sequence (for ease of PCB routing).
+ */
+
+Pin 1 = ioaddr;
+Pin 2 = cpu_e;
+Pin 3 = cpu_q;
+Pin 4 = cpu_rw;
+Pin 5 = a11;
+Pin 6 = a14; 
+Pin 7 = a10;
+Pin 8 = a12;
+Pin 9 = a15;
+Pin 11 = a13;
+
+/*
+ * Outputs:  define outputs
+ *
+ */
+
+Pin 12 = mreq;
+Pin 13 = clk;
+Pin 14 = cs_rom;
+Pin 15 = cs_ram;
+Pin 16 = cs_spare;
+Pin 17 = iorq;
+Pin 18 = rd;
+Pin 19 = wr;
+
+/*
+ * Logic: MC6809 CPU
+ * mreq = active low : not active low ioaddr while active high E or Q clock
+ * iorq = active low : active low ioaddr while active high E or Q clock
+ * clk = E clock
+ * rd = active low : not active low CPU R/W while active high E
+ * wr = active low : active low CPU R/W while active high E
+ *
+ * cs_rom = ROM (0xE000 - 0xFFFF) - clock and ioaddr gated
+ * cs_ram = ROM (0x0000 - 0xDFFF) - clock and ioaddr gated
+ * cs_spare = SPARE - iorq
+ */
+
+!mreq = ioaddr & (cpu_e # cpu_q);
+clk = cpu_e;
+
+!cs_rom = !mreq & a15 & a14 & a13;
+!cs_ram = !mreq & !(a15 & a14 & a13);
+
+!cs_spare = !ioaddr & (cpu_e # cpu_q);
+
+!iorq =  !ioaddr & (cpu_e # cpu_q);
+
+!rd = cpu_rw & cpu_e;
+!wr = !cpu_rw & cpu_e;
+
