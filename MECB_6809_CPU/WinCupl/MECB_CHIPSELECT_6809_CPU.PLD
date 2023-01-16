@@ -18,9 +18,11 @@ Device          g16v8as;
 
 /*
  * Inputs: Address Inputs were assigned based on the ECB bus pin sequence (for ease of PCB routing).
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
  */
 
-Pin 1 = ioaddr;
+Pin 1 = !ioaddr;
 Pin 2 = cpu_e;
 Pin 3 = cpu_q;
 Pin 4 = cpu_rw;
@@ -33,41 +35,44 @@ Pin 11 = a13;
 
 /*
  * Outputs:  define outputs
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
  *
  */
 
-Pin 12 = mreq;
+Pin 12 = !mreq;
 Pin 13 = clk;
-Pin 14 = cs_rom;
-Pin 15 = cs_ram;
-Pin 16 = cs_spare;
-Pin 17 = iorq;
-Pin 18 = rd;
-Pin 19 = wr;
+Pin 14 = !cs_rom;
+Pin 15 = !cs_ram;
+Pin 16 = !cs_spare;
+Pin 17 = !iorq;
+Pin 18 = !rd;
+Pin 19 = !wr;
 
 /*
- * Logic: MC6809 CPU
- * mreq = active low : not active low ioaddr while active high E or Q clock
- * iorq = active low : active low ioaddr while active high E or Q clock
- * clk = E clock
- * rd = active low : not active low CPU R/W while active high E
- * wr = active low : active low CPU R/W while active high E
  *
- * cs_rom = ROM (0xE000 - 0xFFFF) - clock and ioaddr gated
- * cs_ram = ROM (0x0000 - 0xDFFF) - clock and ioaddr gated
- * cs_spare = SPARE - iorq
+ * Logic: MC6809 CPU
+ *
+ * mreq : ioaddr not asserted, while E or Q clock high.
+ * iorq : ioaddr asserted, while E or Q clock high.
+ * clk : E clock
+ * rd : CPU R/W is high, while E clock high.
+ * wr : CPU R/W is low, while E clock high.
+ *
+ * cs_rom : ROM address space (0xE000 - 0xFFFF), while mreq asserted.
+ * cs_ram : RAM address space (0x0000 - 0xDFFF), while mreq asserted.
+ * cs_spare : Unused, but assigned to replicate iorq.
+ *
  */
 
-!mreq = ioaddr & (cpu_e # cpu_q);
+mreq = !ioaddr & (cpu_e # cpu_q);
 clk = cpu_e;
 
-!cs_rom = !mreq & a15 & a14 & a13;
-!cs_ram = !mreq & !(a15 & a14 & a13);
+cs_rom = mreq & a15 & a14 & a13;
+cs_ram = mreq & !(a15 & a14 & a13);
 
-!cs_spare = !ioaddr & (cpu_e # cpu_q);
+cs_spare = ioaddr & (cpu_e # cpu_q);
 
-!iorq =  !ioaddr & (cpu_e # cpu_q);
+iorq =  ioaddr & (cpu_e # cpu_q);
 
-!rd = cpu_rw & cpu_e;
-!wr = !cpu_rw & cpu_e;
-
+rd = cpu_rw & cpu_e;
+wr = !cpu_rw & cpu_e;
