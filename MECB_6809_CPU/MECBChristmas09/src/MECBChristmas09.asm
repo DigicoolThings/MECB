@@ -51,7 +51,7 @@ SoundByteOfs	EQU	$88	; $88 through $89 - 16 bit Offset into the SouundByteTable 
 		SETDP	#$00
 ; Setup VDP Initial Settings for Registers 0 - 7
 		LDX	#GraphModeRegs
-		BSR	tfrAllVDPRegs
+		LBSR	tfrAllVDPRegs
 ; Clear and then Setup VDP VRAM
 		JSR	vramClear
 		JSR	vramSetup
@@ -113,6 +113,7 @@ setVramReadAddress
 ; Destroys:	A
 		ANDA	#$3F
 		STB	VDP_REGISTER	; Store low byte of address
+;		NOP			; NOP - add for required delay when running at 4Mhz
 		STA	VDP_REGISTER	; Store masked high byte of address
 		RTS
 
@@ -124,6 +125,7 @@ setVramWriteAddress
 		ANDA	#$3F
 		ORA	#$40
 		STB	VDP_REGISTER	; Store low byte of address
+;		NOP			; NOP - add for required delay when running at 4Mhz
 		STA	VDP_REGISTER	; Store masked high byte of address
 		RTS
 
@@ -136,6 +138,7 @@ writeRegisterByteVDP
 		ANDB	#$07
 		ORB	#$80
 		STA	VDP_REGISTER	; Store data byte
+;		NOP			; NOP - add for required delay when running at 4Mhz
 		STB	VDP_REGISTER	; Store masked register number
 		RTS
 
@@ -177,6 +180,7 @@ tfrAllVDPRegs
 		LDB	#$80		; Initialise to register zero
 LoadRegLoop	LDA	,X+		; Load register data pointed to by X and increment X
 		STA	VDP_REGISTER	; Store data byte
+;		NOP			; NOP - add for required delay when running at 4Mhz
 		STB	VDP_REGISTER	; Store register number
 		INCB			; Point to next register
 		CMPB	#$88		; Have we done all 8 registers?
@@ -190,6 +194,8 @@ setVramBlock
 ; Returns:	-
 ; Destroys:	A, Y
 SetVramLoop	STA	VDP_VRAM
+;		NOP			; NOP x2 - add for required delay when running at 4Mhz
+;		NOP
 		LEAY	-1,Y
 		BNE	SetVramLoop
 		RTS
@@ -202,6 +208,8 @@ tfrVramBlock
 ; Destroys:	A, X, Y
 TfrVramLoop	LDA	,X+		; Load VRAM data pointed to by X and increment X
 		STA	VDP_VRAM
+;		NOP			; NOP x2 - add for required delay when running at 4Mhz
+;		NOP
 		LEAY	-1,Y
 		BNE	TfrVramLoop
 		RTS
