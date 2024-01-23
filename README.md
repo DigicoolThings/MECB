@@ -17,4 +17,8 @@ To utilise the template, simply copy the entire folder and it's contents into yo
 
 More information on the Minimalist Europe Card Bus (MECB) can be found here: https://digicoolthings.com/minimalist-europe-card-bus-mecb
 
+## MECB Board Mechanical (MECB_BoardMechanical.pdf)
 ![MECB_BoardMechanical](https://user-images.githubusercontent.com/41102492/156108345-406d51ec-9da2-4283-bedd-fe233dd7c1df.png)
+
+## MECB Bus Pinout (MECB_Bus_Pinout.png)
+<img width="800" alt="MECB_Bus_Pinout" src="https://github.com/DigicoolThings/MECB/assets/41102492/43e58014-8481-4305-b183-d8f361a34339">
