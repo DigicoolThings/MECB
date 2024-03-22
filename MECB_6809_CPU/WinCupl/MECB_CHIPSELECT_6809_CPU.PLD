@@ -94,3 +94,19 @@ cs_rom = mreq & a15 & a14;
 cs_ram = mreq & !(a15 & a14);
 cs_spare = ioaddr & (cpu_e # cpu_q);
 */
+
+/*
+ *
+ * Logic: MC6809 CPU Card - Alternative Chip Selects for 32K RAM 32K ROM 
+ *
+ * cs_rom : ROM address space (0x8000 - 0xFFFF), while mreq asserted.
+ * cs_ram : RAM address space (0x0000 - 0x7FFF), while mreq asserted.
+ * cs_spare : Unused, but assigned to replicate iorq.
+ *
+ */
+/*
+cs_rom = mreq & a15;
+cs_ram = mreq & !a15;
+cs_spare = ioaddr & (cpu_e # cpu_q);
+*/
+

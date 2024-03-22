@@ -1,0 +1,100 @@
+Name            MECB_ChipSelect_1MB_ROM_Expansion;
+Partno          U1;
+Date            01/2024;
+Revision        01;
+Designer        Greg;
+Company         Digicool Things;
+Assembly        None;
+Location        None;
+Device          g16v8as;
+
+/****************************************************************/
+/*                                                              */
+/* Note: For an ATF16V8 in Simple Mode pins 15 and 16           */
+/*  (center macrocells) are permanently configured as           */
+/*  combinatorial outputs.                                      */   
+/*                                                              */
+/****************************************************************/
+
+/*
+ *
+ * Inputs: Inputs were assigned based on the ECB bus pin sequence (for ease of PCB routing).
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 1 	= a19;
+Pin 2 	= a18;
+Pin 3 	= a16;
+Pin 4 	= a17;
+Pin 19	= a10;
+
+Pin 18 = a11;
+Pin 7 	= a12;
+Pin 12 = a13;
+Pin 5 	= a14;
+Pin 13 = a15;
+
+Pin 9 	= clk;
+Pin 8 	= !iorq;
+Pin 11 = !mreq;
+Pin 6 	= !rd; 
+Pin 17 = !wr;
+
+/*
+ *
+ * Outputs: Define outputs
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 14 = !cs0;
+Pin 15 = !cs1;
+Pin 16 = ecb_sw;
+
+/*
+ *
+ * Logic: 1MB ROM Expansion Card - Manual 64K Bank Select with top 16KB assigned of each 64K Bank
+ *
+ * cs0 : (ROM0) mreq asserted and A19 low, plus A15 & A14 high for 16K bank address 0xC000 - 0xFFFF
+ * cs1 : (ROM1) mreq asserted and A19 high, plus A15 & A14 high for 16K bank address 0xC000 - 0xFFFF
+
+ * cs2 : (ECB_/SW) low
+ *
+ */
+
+cs0 = mreq & !a19 & a15 & a14;
+cs1 = mreq & a19 & a15 & a14;
+ecb_sw = 'b'0;
+
+
+/*
+ *
+ * Logic: 1MB ROM Expansion Card - Manual 64K Bank Select with top 32KB assigned of each 64K Bank
+ *
+ * cs0 : (ROM0) mreq asserted and A19 low, plus A15 high for 32K bank address 0x8000 - 0xFFFF
+ * cs1 : (ROM1) mreq asserted and A19 high, plus A15 high for 32K bank address 0x8000 - 0xFFFF
+ * cs2 : (ECB_/SW) low
+ *
+ */
+/*
+cs0 = mreq & !a19 & a15;
+cs1 = mreq & a19 & a15;
+ecb_sw = 'b'0;
+*/
+
+/*
+ *
+ * Logic: 1MB ROM Expansion Card - Simple bus driven 1MB linear address space
+ *
+ * cs0 : (ROM0) mreq asserted and A19 low
+ * cs1 : (ROM1) mreq asserted and A19 high
+ * cs2 : (ECB_/SW) high
+ *
+ */
+/*
+cs0 = mreq & !a19;
+cs1 = mreq & a19;
+ecb_sw = 'b'1;
+*/
+
