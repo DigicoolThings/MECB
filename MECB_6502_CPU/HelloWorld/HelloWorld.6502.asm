@@ -19,7 +19,7 @@ Start   .org    $F000       ; Entry point
 ; Initialise 6502
         sei                 ; Disable Interrupts
         cld                 ; Clear Decimal flag (Binary mode)
-        ldx     $FF         ; Initialise Stack pointer ($01FF)
+        ldx     #$FF        ; Initialise Stack pointer ($01FF)
         txs
 ; Initialise ACIA
         lda     #$03        ; Reset ACIA
