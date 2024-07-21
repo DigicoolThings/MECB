@@ -53,6 +53,10 @@ Pin 15 = !cs1;
 Pin 16 = !cs2;
 
 /*
+ * Memory Map options follow (un-comment only one!)
+ */
+
+/*
  *
  * Logic: Motorola I/O Card - I/O Address Allocations
  *
@@ -65,4 +69,21 @@ Pin 16 = !cs2;
 cs0 = iorq & !a7 & !a6 & !a5 & !a4 & a3;
 cs1 = iorq & !a7 & !a6 & !a5 & !a4 & !a3;
 cs2 = iorq & !a7 & !a6 & !a5 & a4 & !a3;
+
+
+/*
+ *
+ * Logic: CreatiVision memory map re-Creation
+ *
+ * cs0 : (ACIA) Disabled (ACIA not used)
+ * cs1 : (PTM) Disabled (PTM not used)
+ * cs2 : (PIA) mreq asserted and clk high for memory address range 0x1xxx
+ *
+ */
+/*
+cs0 = 'b'0;
+cs1 = 'b'0;
+cs2 = mreq & clk & !a15 & !a14 & !a13 & a12;
+*/
+
 

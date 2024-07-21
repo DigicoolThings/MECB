@@ -52,6 +52,9 @@ Pin 14 = !cs0;
 Pin 15 = !cs1;
 Pin 16 = !cs2;
 
+/*
+ * Memory Map options follow (un-comment only one!)
+ */
 
 /*
  *
@@ -82,19 +85,20 @@ cs0 = iorq & a7 & !a6 & !a5 & !a4 & !a3;
 cs1 = iorq & rd & a7 & !a6 & !a5 & !a4 & !a3;
 cs2 = iorq & wr & a7 & !a6 & !a5 & !a4 & !a3;
 
+
 /*
  *
- * Logic: Creativision VDP
+ * Logic: CreatiVision memory map re-Creation for VDP
  *
  * cs0 : (unused) allocated as VDP memory address range 0x2000 - 0x3FFF
- * cs1 : (CSR) mreq asserted and clk high for memory address range 0x2xxx
- * cs2 : (CSW) mreq asserted and clk high for memory address range 0x3xxx
+ * cs1 : (CSR) mreq & rd asserted and clk high for memory address range 0x2xxx
+ * cs2 : (CSW) mreq & wr asserted and clk high for memory address range 0x3xxx
  *
  */
 /*
 cs0 = mreq & !a15 & !a14 & a13;
-cs1 = mreq & clk & !a15 & !a14 & a13 & !a12;
-cs2 = mreq & clk & !a15 & !a14 & a13 & a12;
+cs1 = mreq & rd & clk & !a15 & !a14 & a13 & !a12;
+cs2 = mreq & wr & clk & !a15 & !a14 & a13 & a12;
 */
 
 /*
