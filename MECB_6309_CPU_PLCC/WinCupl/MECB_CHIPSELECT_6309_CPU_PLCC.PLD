@@ -1,0 +1,114 @@
+Name            MECB_CHIPSELECT_6309_CPU_PLCC;
+Partno          CA0001;
+Revision        01;
+Date            08/2024;
+Designer        Greg;
+Company         Digicool Things;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/****************************************************************/
+/*                                                              */
+/* Note: For an ATV16V8 in Simple Mode pins 15 and 16           */
+/*  (center macrocells) are permanently configured as           */
+/*  combinatorial outputs.                                      */   
+/*                                                              */
+/****************************************************************/
+
+/*
+ * Inputs: Address Inputs were assigned based on the ECB bus pin sequence (for ease of PCB routing).
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 1 = !ioaddr;
+Pin 2 = cpu_e;
+Pin 3 = cpu_q;
+Pin 4 = cpu_rw;
+Pin 5 = a11;
+Pin 6 = a14; 
+Pin 7 = a19;
+Pin 8 = a12;
+Pin 9 = a15;
+Pin 11 = a13;
+
+/*
+ * Outputs:  define outputs
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 12 = !mreq;
+Pin 13 = clk;
+Pin 14 = !cs_rom0;
+Pin 15 = !cs_ram;
+Pin 16 = !cs_rom1;
+Pin 17 = !iorq;
+Pin 18 = !rd;
+Pin 19 = !wr;
+
+/*
+ *
+ * Logic: 6309 CPU PLCC Card - Bus Control  
+ *
+ * mreq : ioaddr not asserted, while E or Q clock high.
+ * iorq : ioaddr asserted, while E or Q clock high.
+ * clk : E clock
+ * rd : CPU R/W is high, while E clock high.
+ * wr : CPU R/W is low, while E clock high.
+ *
+ */
+
+mreq = !ioaddr & (cpu_e # cpu_q);
+iorq =  ioaddr & (cpu_e # cpu_q);
+clk = cpu_e;
+rd = cpu_rw & cpu_e;
+wr = !cpu_rw & cpu_e;
+
+/*
+ * Memory Map options follow (un-comment only one!)
+ */
+
+/*
+ *
+ * Logic: 6309 CPU PLCC Card - Chip Selects for 56K RAM 8K ROM 
+ *
+ * cs_ram  : RAM address space (0x0000 - 0xDFFF), while mreq asserted.
+ * cs_rom0 : ROM address space (0xE000 - 0xFFFF), while mreq asserted and A19 low.
+ * cs_rom1 : ROM address space (0xE000 - 0xFFFF), while mreq asserted and A19 high.
+ *
+ */
+/*
+cs_ram = mreq & !(a15 & a14 & a13);
+cs_rom0 = mreq & a15 & a14 & a13 & !a19;
+cs_rom1 = mreq & a15 & a14 & a13 & a19;
+*/
+/*
+ *
+ * Logic: 6309 CPU PLCC Card - Alternative Chip Selects for 48K RAM 16K ROM 
+ *
+ * cs_ram  : RAM address space (0x0000 - 0xBFFF), while mreq asserted.
+ * cs_rom0 : ROM address space (0xC000 - 0xFFFF), while mreq asserted and A19 low.
+ * cs_rom1 : ROM address space (0xC000 - 0xFFFF), while mreq asserted and A19 high.
+ *
+ */
+
+cs_ram = mreq & !(a15 & a14);
+cs_rom0 = mreq & a15 & a14 & !a19;
+cs_rom1 = mreq & a15 & a14 & a19;
+
+/*
+ *
+ * Logic: 6309 CPU PLCC Card - Alternative Chip Selects for 32K RAM 32K ROM 
+ *
+ * cs_ram  : RAM address space (0x0000 - 0x7FFF), while mreq asserted.
+ * cs_rom0 : ROM address space (0x8000 - 0xFFFF), while mreq asserted and A19 low.
+ * cs_rom1 : ROM address space (0x8000 - 0xFFFF), while mreq asserted and A19 high.
+ *
+ */
+/*
+cs_ram = mreq & !a15;
+cs_rom0 = mreq & a15 & !a19;
+cs_rom1 = mreq & a15 & a19;
+*/
