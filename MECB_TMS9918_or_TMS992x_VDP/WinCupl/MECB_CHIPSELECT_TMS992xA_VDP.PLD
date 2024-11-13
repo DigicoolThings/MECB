@@ -80,11 +80,11 @@ cs2 = !a5;
  * cs2 : (CSW) iorq and wr asserted for address range 0x80 - 0x87
  *
  */
-
+/*
 cs0 = iorq & a7 & !a6 & !a5 & !a4 & !a3;
 cs1 = iorq & rd & a7 & !a6 & !a5 & !a4 & !a3;
 cs2 = iorq & wr & a7 & !a6 & !a5 & !a4 & !a3;
-
+*/
 
 /*
  *
@@ -100,6 +100,9 @@ cs0 = mreq & !a15 & !a14 & a13;
 cs1 = mreq & rd & clk & !a15 & !a14 & a13 & !a12;
 cs2 = mreq & wr & clk & !a15 & !a14 & a13 & a12;
 */
+cs0 = clk & !a15 & !a14 & a13;
+cs1 = clk & !a15 & !a14 & a13 & !a12;
+cs2 = clk & !a15 & !a14 & a13 & a12;
 
 /*
  *

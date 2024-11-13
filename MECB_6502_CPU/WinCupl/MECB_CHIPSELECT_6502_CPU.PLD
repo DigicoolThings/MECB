@@ -101,11 +101,11 @@ ecb_wr = !cpu_rw & clk;
  * cs_spare : Unused, but assigned to replicate ecb_iorq.
  *
  */
-
+/*
 cs_rom = ecb_mreq & a15 & a14 & a13;
 cs_ram = ecb_mreq & !(a15 & a14 & a13);
 cs_spare = ioaddr & clk;
-
+*/
 /*
  *
  * Logic: 6502 CPU Card - Alternative Chip Selects for 56K RAM 8K ROM 
@@ -169,3 +169,6 @@ cs_rom = ecb_mreq & a15;
 cs_ram = ecb_mreq & !a15 & !a14 & !a13 & !a12;
 cs_spare = ioaddr & clk;
 */
+cs_rom = a15;
+cs_ram = clk & !a15 & !a14 & !a13 & !a12 & !a11 & ! a10;
+cs_spare = ioaddr & clk;

@@ -53,6 +53,10 @@ Pin 15 = !cs1;
 Pin 16 = ecb_sw;
 
 /*
+ * Memory Map options follow (un-comment only one!)
+ */
+
+/*
  *
  * Logic: 1MB ROM Expansion Card - Manual 64K Bank Select with top 16KB assigned of each 64K Bank
  *
@@ -80,6 +84,26 @@ ecb_sw = 'b'0;
 /*
 cs0 = mreq & !a19 & a15;
 cs1 = mreq & a19 & a15;
+ecb_sw = 'b'0;
+*/
+
+/*
+ *
+ * Logic: 1MB ROM Expansion Card - Manual 64K Bank Select with top 48KB assigned of each 64K Bank
+ *
+ * cs0 : (ROM0) mreq asserted and A19 low, plus A15 or A14 high for 48K bank address 0x4000 - 0xFFFF
+ * cs1 : (ROM1) mreq asserted and A19 high, plus A15 or A14 high for 48K bank address 0x4000 - 0xFFFF
+ * cs2 : (ECB_/SW) low
+ *
+ */
+/*
+cs0 = mreq & !a19 & (a15 # a14);
+cs1 = mreq & a19 & (a15 # a14);
+ecb_sw = 'b'0;
+*/
+/*
+cs0 = !a19 & (a15 # a14);
+cs1 = a19 & (a15 # a14);
 ecb_sw = 'b'0;
 */
 

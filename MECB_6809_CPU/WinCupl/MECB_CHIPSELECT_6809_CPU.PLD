@@ -67,6 +67,10 @@ rd = cpu_rw & cpu_e;
 wr = !cpu_rw & cpu_e;
 
 /*
+ * Memory Map options follow (un-comment only one!)
+ */
+
+/*
  *
  * Logic: MC6809 CPU Card - Chip Selects for 56K RAM 8K ROM 
  *
@@ -75,11 +79,11 @@ wr = !cpu_rw & cpu_e;
  * cs_spare : Unused, but assigned to replicate iorq.
  *
  */
-
+/*
 cs_rom = mreq & a15 & a14 & a13;
 cs_ram = mreq & !(a15 & a14 & a13);
 cs_spare = ioaddr & (cpu_e # cpu_q);
-
+*/
 /*
  *
  * Logic: MC6809 CPU Card - Alternative Chip Selects for 48K RAM 16K ROM 
@@ -89,11 +93,10 @@ cs_spare = ioaddr & (cpu_e # cpu_q);
  * cs_spare : Unused, but assigned to replicate iorq.
  *
  */
-/*
+
 cs_rom = mreq & a15 & a14;
 cs_ram = mreq & !(a15 & a14);
 cs_spare = ioaddr & (cpu_e # cpu_q);
-*/
 
 /*
  *
