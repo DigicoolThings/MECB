@@ -1,6 +1,6 @@
 Name            MECB_ChipSelect_1MB_ROM_Expansion;
 Partno          U1;
-Date            01/2024;
+Date            11/2024;
 Revision        01;
 Designer        Greg;
 Company         Digicool Things;
@@ -58,11 +58,10 @@ Pin 16 = ecb_sw;
 
 /*
  *
- * Logic: 1MB ROM Expansion Card - Manual 64K Bank Select with top 16KB assigned of each 64K Bank
+ * Logic: 1MB ROM Expansion Card - Default manual 64K Bank Select with top 16KB assigned of each 64K Bank
  *
  * cs0 : (ROM0) mreq asserted and A19 low, plus A15 & A14 high for 16K bank address 0xC000 - 0xFFFF
  * cs1 : (ROM1) mreq asserted and A19 high, plus A15 & A14 high for 16K bank address 0xC000 - 0xFFFF
-
  * cs2 : (ECB_/SW) low
  *
  */
@@ -101,9 +100,20 @@ cs0 = mreq & !a19 & (a15 # a14);
 cs1 = mreq & a19 & (a15 # a14);
 ecb_sw = 'b'0;
 */
+
 /*
-cs0 = !a19 & (a15 # a14);
-cs1 = a19 & (a15 # a14);
+ *
+ * Logic: 1MB ROM Expansion Card - CreatiVision manual 64K Bank Select with top 48KB assigned of each 64K Bank
+ *
+ * cs0 : (ROM0) clk high and A19 low, plus A15 or A14 high for 48K bank address 0x4000 - 0xFFFF
+ * cs1 : (ROM1) clk high and A19 high, plus A15 or A14 high for 48K bank address 0x4000 - 0xFFFF
+ * cs2 : (ECB_/SW) low
+ *
+ * NOTE: We don't utilise mreq as we are not reserving ioaddr space for CreatiVision memory map.
+ */
+/*
+cs0 = clk & !a19 & (a15 # a14);
+cs1 = clk & a19 & (a15 # a14);
 ecb_sw = 'b'0;
 */
 

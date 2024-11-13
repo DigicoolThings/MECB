@@ -1,7 +1,7 @@
 Name            MECB_CHIPSELECT_6309_CPU_PLCC;
 Partno          CA0001;
 Revision        01;
-Date            08/2024;
+Date            11/2024;
 Designer        Greg;
 Company         Digicool Things;
 Location        None;
@@ -72,7 +72,22 @@ wr = !cpu_rw & cpu_e;
 
 /*
  *
- * Logic: 6309 CPU PLCC Card - Chip Selects for 56K RAM 8K ROM 
+ * Logic: 6309 CPU PLCC Card - Default Chip Selects for 48K RAM 16K ROM 
+ *
+ * cs_ram  : RAM address space (0x0000 - 0xBFFF), while mreq asserted.
+ * cs_rom0 : ROM address space (0xC000 - 0xFFFF), while mreq asserted and A19 low.
+ * cs_rom1 : ROM address space (0xC000 - 0xFFFF), while mreq asserted and A19 high.
+ *
+ */
+
+cs_ram = mreq & !(a15 & a14);
+cs_rom0 = mreq & a15 & a14 & !a19;
+cs_rom1 = mreq & a15 & a14 & a19;
+
+
+/*
+ *
+ * Logic: 6309 CPU PLCC Card - Alternative Chip Selects for 56K RAM 8K ROM 
  *
  * cs_ram  : RAM address space (0x0000 - 0xDFFF), while mreq asserted.
  * cs_rom0 : ROM address space (0xE000 - 0xFFFF), while mreq asserted and A19 low.
@@ -84,19 +99,6 @@ cs_ram = mreq & !(a15 & a14 & a13);
 cs_rom0 = mreq & a15 & a14 & a13 & !a19;
 cs_rom1 = mreq & a15 & a14 & a13 & a19;
 */
-/*
- *
- * Logic: 6309 CPU PLCC Card - Alternative Chip Selects for 48K RAM 16K ROM 
- *
- * cs_ram  : RAM address space (0x0000 - 0xBFFF), while mreq asserted.
- * cs_rom0 : ROM address space (0xC000 - 0xFFFF), while mreq asserted and A19 low.
- * cs_rom1 : ROM address space (0xC000 - 0xFFFF), while mreq asserted and A19 high.
- *
- */
-
-cs_ram = mreq & !(a15 & a14);
-cs_rom0 = mreq & a15 & a14 & !a19;
-cs_rom1 = mreq & a15 & a14 & a19;
 
 /*
  *

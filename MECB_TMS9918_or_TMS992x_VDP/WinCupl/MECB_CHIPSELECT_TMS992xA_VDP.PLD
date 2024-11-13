@@ -1,6 +1,6 @@
 Name            MECB_ChipSelect_TMS9918A_Or_TMS992xA_VDP;
 Partno          U1;
-Date            07/2022;
+Date            11/2024;
 Revision        01;
 Designer        Greg;
 Company         Digicool Things;
@@ -73,36 +73,34 @@ cs2 = !a5;
 
 /*
  *
- * Logic: Initial CPU Board Test with VDP (MECBInitialTest09)
+ * Logic: Default 0x80 - 0x87 VDP location (as used in MECBInitialTest09)
  *
  * cs0 : (unused) allocated as VDP IO address range 0x80 - 0x87
  * cs1 : (CSR) iorq and rd asserted for address range 0x80 - 0x87
  * cs2 : (CSW) iorq and wr asserted for address range 0x80 - 0x87
  *
  */
-/*
+
 cs0 = iorq & a7 & !a6 & !a5 & !a4 & !a3;
 cs1 = iorq & rd & a7 & !a6 & !a5 & !a4 & !a3;
 cs2 = iorq & wr & a7 & !a6 & !a5 & !a4 & !a3;
-*/
+
 
 /*
  *
  * Logic: CreatiVision memory map re-Creation for VDP
  *
  * cs0 : (unused) allocated as VDP memory address range 0x2000 - 0x3FFF
- * cs1 : (CSR) mreq & rd asserted and clk high for memory address range 0x2xxx
- * cs2 : (CSW) mreq & wr asserted and clk high for memory address range 0x3xxx
+ * cs1 : (CSR) clk high & rd asserted for memory address range 0x2xxx
+ * cs2 : (CSW) clk high & wr asserted for memory address range 0x3xxx
  *
+ * NOTE: We don't utilise mreq as we are not reserving ioaddr space for CreatiVision memory map.
  */
 /*
-cs0 = mreq & !a15 & !a14 & a13;
-cs1 = mreq & rd & clk & !a15 & !a14 & a13 & !a12;
-cs2 = mreq & wr & clk & !a15 & !a14 & a13 & a12;
-*/
 cs0 = clk & !a15 & !a14 & a13;
-cs1 = clk & !a15 & !a14 & a13 & !a12;
-cs2 = clk & !a15 & !a14 & a13 & a12;
+cs1 = clk & rd & !a15 & !a14 & a13 & !a12;
+cs2 = clk & wr & !a15 & !a14 & a13 & a12;
+*/
 
 /*
  *

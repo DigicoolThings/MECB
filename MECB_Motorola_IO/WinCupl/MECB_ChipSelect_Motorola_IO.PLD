@@ -1,6 +1,6 @@
 Name            MECB_ChipSelect_Motorola_IO;
 Partno          U1;
-Date            08/2023;
+Date            11/2024;
 Revision        01;
 Designer        Greg;
 Company         Digicool Things;
@@ -58,7 +58,7 @@ Pin 16 = !cs2;
 
 /*
  *
- * Logic: Motorola I/O Card - I/O Address Allocations
+ * Logic: Motorola I/O Card - Default I/O Address Allocations
  *
  * cs0 : (ACIA) iorq asserted for I/O address range 0x08 - 0x0F
  * cs1 : (PTM) iorq asserted for I/O address range 0x00 - 0x07
@@ -77,13 +77,12 @@ cs2 = iorq & !a7 & !a6 & !a5 & a4 & !a3;
  *
  * cs0 : (ACIA) Disabled (ACIA not used)
  * cs1 : (PTM) Disabled (PTM not used)
- * cs2 : (PIA) mreq asserted and clk high for memory address range 0x1xxx
+ * cs2 : (PIA) clk high for memory address range 0x1xxx
  *
+ * NOTE: We don't utilise mreq as we are not reserving ioaddr space for CreatiVision memory map.
  */
 /*
 cs0 = 'b'0;
 cs1 = 'b'0;
-cs2 = mreq & clk & !a15 & !a14 & !a13 & a12;
+cs2 = clk & !a15 & !a14 & !a13 & a12;
 */
-
-
