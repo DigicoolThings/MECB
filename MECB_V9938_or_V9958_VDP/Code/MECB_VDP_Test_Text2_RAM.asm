@@ -1,0 +1,1438 @@
+;******************************************************************************
+;	MECB_VDP_Test_Text2_RAM.asm
+;
+;	A simple 6809 CPU Card TEXT 2 mode test for the V9938/58 VDP Card.
+;
+;	RAM loadable code (eg. $0100 Entry).
+;
+;	VDP defaults to base address $C080
+;	e.g. If IORQ based VDP allocation, then CPU card IORQ is allocated to
+;	page $C0xx and VDP address decode is based on IORQ range $80..$87
+;
+;
+;	Author: Greg@DigicoolThings.com
+;	Date:	May 2025
+;
+;******************************************************************************
+Entry		EQU	$0100		; Code entry address
+VDP		EQU	$C080		; V9938 or V9958 VDP address
+VDP_VRAM	EQU	VDP+0		; VDP VRAM access address
+VDP_REGISTER	EQU	VDP+1		; VDP Register access address
+;
+; Main Entry Point
+		ORG	Entry
+; Initialise Direct Page Register for Zero page
+		CLRA
+		TFR	A,DP	
+; Tell asm6809 what page the DP register has been set to
+		SETDP	#$00
+;
+; Setup VDP Initial Settings for Registers 0 - 23
+		LDX	#InitialRegs
+		BSR	tfrAllVDPRegs
+; Clear and then Setup some VDP VRAM
+		JSR	vramClear
+		JSR	vramSetup
+; Turn on VDP Display
+		LDA	#$50
+		LDB	#1
+		BSR 	writeRegisterByteVDP
+;		
+		RTS
+;
+; *** End of Mainline. Subroutines follow ***
+;
+setVramReadAddress
+; Function:	Setup VRAM Address for subsequent VRAM read
+; Parameters:	D - VRAM address
+; Returns:	-
+; Destroys:	A
+		PSHS	A,B
+; Set VRAM bank (VRAM, not Expansion RAM)
+		LDA	#$00
+		LDB	#45
+		BSR 	writeRegisterByteVDP
+; Set VRAM Access Bank (VRAM high address A16-A14)	
+		LDA	#$00
+		LDB	#14
+		BSR 	writeRegisterByteVDP
+		PULS	A,B
+;		
+		ANDA	#$3F
+		STB	VDP_REGISTER	; Store low byte of address
+		NOP			; NOP - add for required delay when running at 4Mhz
+		STA	VDP_REGISTER	; Store masked high byte of address
+		RTS
+
+setVramWriteAddress
+; Function:	Setup VRAM Address for subsequent VRAM write
+; Parameters:	D - VRAM address
+; Returns:	-
+; Destroys:	A
+		PSHS	A,B
+; Set VRAM bank (VRAM, not Expansion RAM)
+		LDA	#$00
+		LDB	#45
+		BSR 	writeRegisterByteVDP
+; Set VRAM Access Bank (VRAM high address A16-A14)	
+		LDA	#$00
+		LDB	#14
+		BSR 	writeRegisterByteVDP
+		PULS	A,B
+;		
+		ANDA	#$3F
+		ORA	#$40
+		STB	VDP_REGISTER	; Store low byte of address
+		NOP			; NOP - add for required delay when running at 4Mhz
+		STA	VDP_REGISTER	; Store masked high byte of address
+		RTS
+
+writeRegisterByteVDP
+; Function:	Write a data byte into a specified VDP register
+; Parameters:	A - Data Byte
+;		B - Register number
+; Returns:	-
+; Destroys:	B
+		ANDB	#$3F
+		ORB	#$80
+		STA	VDP_REGISTER	; Store data byte
+		NOP			; NOP - add for required delay when running at 4Mhz
+		STB	VDP_REGISTER	; Store masked register number
+		RTS
+
+readStatusByteVDP
+; Function:	Read the VDP status byte
+; Note:		Routine intended for functional documentaion only
+;		i.e. Just directly inline implement: LDA VDP_REGISTER
+; Parameters:	-
+; Returns:	A = Status Byte
+; Destroys:	A
+		LDA	VDP_REGISTER
+		RTS
+
+readVramByteVDP
+; Function:	Read byte from current VRAM read address
+; Note:		Routine intended for functional documentaion only
+;		i.e. Just directly inline implement: LDA VDP_VRAM
+; Parameters:	-
+; Returns:	A = VRAM Byte read
+; Destroys:	A
+		LDA	VDP_VRAM
+		RTS
+
+writeVramByteVDP
+; Function:	Write byte to current VRAM write address
+; Note:		Routine intended for functional documentaion only
+;		i.e. Just directly inline implement: STA VDP_VRAM
+; Parameters:	A - VRAM Byte to write
+; Returns:	-
+; Destroys:	-
+		STA	VDP_VRAM
+		RTS
+
+tfrAllVDPRegs
+; Function:	Write block of 24 bytes to the VDP registers
+; Parameters:	X - Points to address of 24 byte register set
+; Returns:	-
+; Destroys:	A, B, X
+		LDB	#$80		; Initialise to register zero
+LoadRegLoop	LDA	,X+		; Load register data pointed to by X and increment X
+		STA	VDP_REGISTER	; Store data byte
+		NOP			; NOP - add for required delay when running at 4Mhz
+		STB	VDP_REGISTER	; Store register number
+		INCB			; Point to next register
+		CMPB	#$98		; Have we done all 24 registers?
+		BNE	LoadRegLoop	; No, do next register
+		RTS
+
+setVramBlock
+; Function:	Write a specified byte to a block of VRAM bytes
+; Parameters:	A - Byte to write
+;		Y - Count of bytes to write
+; Returns:	-
+; Destroys:	A, Y
+SetVramLoop	STA	VDP_VRAM
+		NOP			; NOP x2 - add for required delay when running at 4Mhz
+		NOP
+		LEAY	-1,Y
+		BNE	SetVramLoop
+		RTS
+
+setIncVramBlock
+; Function:	Write an incrementing byte to a block of VRAM bytes
+; Parameters:	A - Initial Byte to write
+;		Y - Count of incrementing bytes to write
+; Returns:	-
+; Destroys:	A, Y
+SetIncVramLoop	STA	VDP_VRAM
+		INCA
+		NOP			; NOP x2 - add for required delay when running at 4Mhz
+		NOP
+		LEAY	-1,Y
+		BNE	SetIncVramLoop
+		RTS
+
+tfrVramBlock
+; Function:	Write block of bytes to VRAM
+; Parameters:	X - Points to address of bytes to write to VRAM
+;		Y - Count of bytes to write
+; Returns:	-
+; Destroys:	A, X, Y
+TfrVramLoop	LDA	,X+		; Load VRAM data pointed to by X and increment X
+		STA	VDP_VRAM
+		NOP			; NOP x2 - add for required delay when running at 4Mhz
+		NOP
+		LEAY	-1,Y
+		BNE	TfrVramLoop
+		RTS
+
+vramClear
+; Function:	Clear first 16KB of VDP VRAM memory
+; Parameters:	-
+; Returns:	-
+; Destroys:	A, B, Y
+		LDD	#$0000
+		JSR	setVramWriteAddress
+		LDA	#$00
+		LDY	#16384
+		BSR	setVramBlock
+		RTS
+
+vramSetup
+; Function:	Setup VDP VRAM Tables
+; Parameters:	-
+; Returns:	-
+; Destroys:	A, B, X, Y
+;
+; Setup Font Pattern in Pattern Table
+; 128 8x8 character patterns = 1024 bytes
+		LDD	#$1000
+		JSR	setVramWriteAddress
+		LDX	#FontPattern
+		LDY	#1024
+		BSR	tfrVramBlock
+;
+; Clear (Pattern #$20) all 1920 (80x24) Screen locations
+		LDD	#$0000
+		JSR	setVramWriteAddress
+		LDA	#$20
+		LDY	#1920
+		BSR	setVramBlock
+;
+; Display Message1 in Pattern Table
+		LDD	#$0000
+		JSR	setVramWriteAddress
+		LDX	#Message1
+		LDY	#160
+		BSR	tfrVramBlock
+;
+; Display Font (all 127 characters) in Pattern Table
+		LDD	#$00F0
+		JSR	setVramWriteAddress
+		CLRA
+		LDY	#128
+		BSR	setIncVramBlock
+;
+; Display Message2 in Pattern Table
+		LDD	#$01E0
+		JSR	setVramWriteAddress
+		LDX	#Message2
+		LDY	#22
+		BSR	tfrVramBlock
+;
+; Clear Color Table all possible 270 (80x26) Screen locations
+		LDD	#$0A00
+		JSR	setVramWriteAddress
+		LDA	#$00
+		LDY	#270
+		JSR	setVramBlock
+;
+		RTS
+;
+; *** End of Subroutines. Data follows ***
+;
+; VDP Register Values for bulk initialisation of VDP Registers
+;
+InitialRegs	FCB	$04		; R0 - Graphics I, Multi-Color, or Text Mode
+		FCB	$10		; R1 - Text Mode, 8x8 Sprites, 16KB VRAM, Display Area Enabled
+		FCB	$03		; R2 - Name table start address = $0000
+		FCB	$2F		; R3 - Color table start address = $0A00
+		FCB	$02		; R4 - Pattern table start address = $1000
+		FCB	$02		; R5 - Sprite Attribute table start address = $0100
+		FCB	$00		; R6 - Sprite Pattern table start address = $0000
+		FCB	$F4		; R7 - White Text / Blue Backdrop
+;		FCB	$C1		; R7 - Dark Green Text / Black Backdrop
+		FCB	$08		; R8 - 64K DRAM chips / Enable Sprite display
+		FCB	$00		; R9 - Non-interlaced NTSC
+		FCB	$00		; R10- Color Table start address (high)
+		FCB	$00		; R11- Sprite Attribute table start address (high)
+		FCB	$C1		; R12- Test2 Blinking Text / Background color 
+		FCB	$88		; R13- Blinking period register
+		FCB	$00		; R14- VRAM Access base address register (high)
+		FCB	$00		; R15- Status register pointer
+		FCB	$00		; R16- Color palette address register
+		FCB	$00		; R17- Control register pointer
+		FCB	$00		; R18- Display adjust register (0 = centred)
+		FCB	$00		; R19- Interrupt line register
+		FCB	$00		; R20- Color burst register 1
+		FCB	$3F		; R21- Color burst register 2
+		FCB	$05		; R22- Color burst register 3
+		FCB	$00		; R23- Display offset register 
+Message1	FCC	"0000000001111111111222222222233333333334"
+		FCC	"4444444445555555555666666666677777777778"
+		FCC	"1234567890123456789012345678901234567890"
+		FCC	"1234567890123456789012345678901234567890"
+Message2	FCC	"80 Column Hello World!"
+FontPattern
+; char 0
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 1
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%01110000
+		FCB	%11111000
+		FCB	%01110000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%00000000
+; char 2
+		FCB	%10101000
+		FCB	%01010100
+		FCB	%10101000
+		FCB	%01010100
+		FCB	%10101000
+		FCB	%01010100
+		FCB	%10101000
+		FCB	%01010100
+; char 3
+		FCB	%00100000
+		FCB	%01110000
+		FCB	%10101000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00000000
+; char 4
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%10101000
+		FCB	%01110000
+		FCB	%00100000
+		FCB	%00000000
+; char 5
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%11111000
+		FCB	%01000000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%00000000
+; char 6
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00010000
+		FCB	%11111000
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%00000000
+; char 7
+		FCB	%01100000
+		FCB	%10010000
+		FCB	%10010000
+		FCB	%01100000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 8
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%11111000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%11111000
+		FCB	%00000000
+; char 9
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%10101000
+		FCB	%00000000
+; char 10
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00001000
+		FCB	%00010000
+		FCB	%10100000
+		FCB	%01000000
+		FCB	%00000000
+		FCB	%00000000
+; char 11
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%11110000
+		FCB	%11110000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 12
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11110000
+		FCB	%11110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+; char 13
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00111100
+		FCB	%00111100
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+; char 14
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00111100
+		FCB	%00111100
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 15
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%11111100
+		FCB	%11111100
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+; char 16
+		FCB	%11111100
+		FCB	%11111100
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 17
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11111100
+		FCB	%11111100
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 18
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11111100
+		FCB	%11111100
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 19
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11111100
+		FCB	%11111100
+		FCB	%00000000
+		FCB	%00000000
+; char 20
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11111100
+		FCB	%11111100
+; char 21
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00111100
+		FCB	%00111100
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+; char 22
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%11110000
+		FCB	%11110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+; char 23
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%11111100
+		FCB	%11111100
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 24
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11111100
+		FCB	%11111100
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+; char 25
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+		FCB	%00110000
+; char 26
+		FCB	%00001000
+		FCB	%00110000
+		FCB	%11000000
+		FCB	%00110000
+		FCB	%00001000
+		FCB	%00000000
+		FCB	%11111000
+		FCB	%00000000
+; char 27
+		FCB	%10000000
+		FCB	%01100000
+		FCB	%00011000
+		FCB	%01100000
+		FCB	%10000000
+		FCB	%00000000
+		FCB	%11111000
+		FCB	%00000000
+; char 28
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11111000
+		FCB	%01010000
+		FCB	%01010000
+		FCB	%01010000
+		FCB	%10011000
+		FCB	%00000000
+; char 29
+		FCB	%00010000
+		FCB	%00010000
+		FCB	%11111000
+		FCB	%00100000
+		FCB	%11111000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%00000000
+; char 30
+		FCB	%00110000
+		FCB	%01001000
+		FCB	%01000000
+		FCB	%11100000
+		FCB	%01000000
+		FCB	%01001000
+		FCB	%10110000
+		FCB	%00000000
+; char 31
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 32
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 33
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00000000
+; char 34
+		FCB	%01010000
+		FCB	%01010000
+		FCB	%01010000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 35
+		FCB	%01010000
+		FCB	%01010000
+		FCB	%11111000
+		FCB	%01010000
+		FCB	%11111000
+		FCB	%01010000
+		FCB	%01010000
+		FCB	%00000000
+; char 36
+		FCB	%00100000
+		FCB	%01111000
+		FCB	%10100000
+		FCB	%01110000
+		FCB	%00101000
+		FCB	%11110000
+		FCB	%00100000
+		FCB	%00000000
+; char 37
+		FCB	%11000000
+		FCB	%11001000
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%10011000
+		FCB	%00011000
+		FCB	%00000000
+; char 38
+		FCB	%01000000
+		FCB	%10100000
+		FCB	%10100000
+		FCB	%01000000
+		FCB	%10101000
+		FCB	%10010000
+		FCB	%01101000
+		FCB	%00000000
+; char 39
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 40
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%00100000
+		FCB	%00010000
+		FCB	%00000000
+; char 41
+		FCB	%01000000
+		FCB	%00100000
+		FCB	%00010000
+		FCB	%00010000
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%00000000
+; char 42
+		FCB	%00100000
+		FCB	%10101000
+		FCB	%01110000
+		FCB	%00100000
+		FCB	%01110000
+		FCB	%10101000
+		FCB	%00100000
+		FCB	%00000000
+; char 43
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%11111000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%00000000
+; char 44
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%00000000
+; char 45
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11111000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 46
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00000000
+; char 47
+		FCB	%00000000
+		FCB	%00001000
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%10000000
+		FCB	%00000000
+		FCB	%00000000
+; char 48
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%10011000
+		FCB	%10101000
+		FCB	%11001000
+		FCB	%10001000
+		FCB	%01110000
+		FCB	%00000000
+; char 49
+		FCB	%00100000
+		FCB	%01100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%01110000
+		FCB	%00000000
+; char 50
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%00001000
+		FCB	%00110000
+		FCB	%01000000
+		FCB	%10000000
+		FCB	%11111000
+		FCB	%00000000
+; char 51
+		FCB	%11111000
+		FCB	%00001000
+		FCB	%00010000
+		FCB	%00110000
+		FCB	%00001000
+		FCB	%10001000
+		FCB	%01110000
+		FCB	%00000000
+; char 52
+		FCB	%00010000
+		FCB	%00110000
+		FCB	%01010000
+		FCB	%10010000
+		FCB	%11111000
+		FCB	%00010000
+		FCB	%00010000
+		FCB	%00000000
+; char 53
+		FCB	%11111000
+		FCB	%10000000
+		FCB	%11110000
+		FCB	%00001000
+		FCB	%00001000
+		FCB	%10001000
+		FCB	%01110000
+		FCB	%00000000
+; char 54
+		FCB	%00111000
+		FCB	%01000000
+		FCB	%10000000
+		FCB	%11110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01110000
+		FCB	%00000000
+; char 55
+		FCB	%11111000
+		FCB	%00001000
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%00000000
+; char 56
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01110000
+		FCB	%00000000
+; char 57
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01111000
+		FCB	%00001000
+		FCB	%00010000
+		FCB	%11100000
+		FCB	%00000000
+; char 58
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 59
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%00000000
+; char 60
+		FCB	%00001000
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%00100000
+		FCB	%00010000
+		FCB	%00001000
+		FCB	%00000000
+; char 61
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11111000
+		FCB	%00000000
+		FCB	%11111000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 62
+		FCB	%10000000
+		FCB	%01000000
+		FCB	%00100000
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%10000000
+		FCB	%00000000
+; char 63
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%00001000
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00000000
+; char 64
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%10101000
+		FCB	%10111000
+		FCB	%10110000
+		FCB	%10000000
+		FCB	%01111000
+		FCB	%00000000
+; char 65
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%11111000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%00000000
+; char 66
+		FCB	%11110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%11110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%11110000
+		FCB	%00000000
+; char 67
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%10001000
+		FCB	%01110000
+		FCB	%00000000
+; char 68
+		FCB	%11100000
+		FCB	%10010000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10010000
+		FCB	%11100000
+		FCB	%00000000
+; char 69
+		FCB	%11111000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%11100000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%11111000
+		FCB	%00000000
+; char 70
+		FCB	%11111000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%11100000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%00000000
+; char 71
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%10000000
+		FCB	%10111000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01111000
+		FCB	%00000000
+; char 72
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%11111000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%00000000
+; char 73
+		FCB	%01110000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%01110000
+		FCB	%00000000
+; char 74
+		FCB	%00001000
+		FCB	%00001000
+		FCB	%00001000
+		FCB	%00001000
+		FCB	%00001000
+		FCB	%10001000
+		FCB	%01110000
+		FCB	%00000000
+; char 75
+		FCB	%10001000
+		FCB	%10010000
+		FCB	%10100000
+		FCB	%11000000
+		FCB	%10100000
+		FCB	%10010000
+		FCB	%10001000
+		FCB	%00000000
+; char 76
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%11111000
+		FCB	%00000000
+; char 77
+		FCB	%10001000
+		FCB	%11011000
+		FCB	%10101000
+		FCB	%10101000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%00000000
+; char 78
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%11001000
+		FCB	%10101000
+		FCB	%10011000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%00000000
+; char 79
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01110000
+		FCB	%00000000
+; char 80
+		FCB	%11110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%11110000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%00000000
+; char 81
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10101000
+		FCB	%10010000
+		FCB	%01101000
+		FCB	%00000000
+; char 82
+		FCB	%11110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%11110000
+		FCB	%10100000
+		FCB	%10010000
+		FCB	%10001000
+		FCB	%00000000
+; char 83
+		FCB	%01111000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%01110000
+		FCB	%00001000
+		FCB	%00001000
+		FCB	%11110000
+		FCB	%00000000
+; char 84
+		FCB	%11111000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00000000
+; char 85
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01110000
+		FCB	%00000000
+; char 86
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01010000
+		FCB	%00100000
+		FCB	%00000000
+; char 87
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10101000
+		FCB	%10101000
+		FCB	%11011000
+		FCB	%10001000
+		FCB	%00000000
+; char 88
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01010000
+		FCB	%00100000
+		FCB	%01010000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%00000000
+; char 89
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01010000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00000000
+; char 90
+		FCB	%11111000
+		FCB	%00001000
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%10000000
+		FCB	%11111000
+		FCB	%00000000
+; char 91
+		FCB	%01110000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%01110000
+		FCB	%00000000
+; char 92
+		FCB	%00000000
+		FCB	%10000000
+		FCB	%01000000
+		FCB	%00100000
+		FCB	%00010000
+		FCB	%00001000
+		FCB	%00000000
+		FCB	%00000000
+; char 93
+		FCB	%01110000
+		FCB	%00010000
+		FCB	%00010000
+		FCB	%00010000
+		FCB	%00010000
+		FCB	%00010000
+		FCB	%01110000
+		FCB	%00000000
+; char 94
+		FCB	%00100000
+		FCB	%01010000
+		FCB	%10001000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 95
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11111000
+		FCB	%00000000
+; char 96
+		FCB	%01000000
+		FCB	%00100000
+		FCB	%00010000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 97
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%01110000
+		FCB	%00001000
+		FCB	%01111000
+		FCB	%10001000
+		FCB	%01111000
+		FCB	%00000000
+; char 98
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%11110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%11110000
+		FCB	%00000000
+; char 99
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%01111000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%01111000
+		FCB	%00000000
+; char 100
+		FCB	%00001000
+		FCB	%00001000
+		FCB	%01111000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01111000
+		FCB	%00000000
+; char 101
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%11111000
+		FCB	%10000000
+		FCB	%01111000
+		FCB	%00000000
+; char 102
+		FCB	%00110000
+		FCB	%01001000
+		FCB	%01000000
+		FCB	%11110000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%00000000
+; char 103
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%01111000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01111000
+		FCB	%00001000
+		FCB	%11110000
+; char 104
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%11110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%00000000
+; char 105
+		FCB	%00000000
+		FCB	%00100000
+		FCB	%00000000
+		FCB	%01100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%01110000
+		FCB	%00000000
+; char 106
+		FCB	%00000000
+		FCB	%00010000
+		FCB	%00000000
+		FCB	%00110000
+		FCB	%00010000
+		FCB	%00010000
+		FCB	%10010000
+		FCB	%01100000
+; char 107
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%10010000
+		FCB	%10100000
+		FCB	%11000000
+		FCB	%10100000
+		FCB	%10010000
+		FCB	%00000000
+; char 108
+		FCB	%01100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%01110000
+		FCB	%00000000
+; char 109
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11010000
+		FCB	%10101000
+		FCB	%10101000
+		FCB	%10101000
+		FCB	%10101000
+		FCB	%00000000
+; char 110
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%00000000
+; char 111
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%01110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01110000
+		FCB	%00000000
+; char 112
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11110000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%11110000
+		FCB	%10000000
+		FCB	%10000000
+; char 113
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%01111000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01111000
+		FCB	%00001000
+		FCB	%00001000
+; char 114
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%10111000
+		FCB	%11000000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%10000000
+		FCB	%00000000
+; char 115
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%01111000
+		FCB	%10000000
+		FCB	%01110000
+		FCB	%00001000
+		FCB	%11110000
+		FCB	%00000000
+; char 116
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%11110000
+		FCB	%01000000
+		FCB	%01000000
+		FCB	%01001000
+		FCB	%00110000
+		FCB	%00000000
+; char 117
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10011000
+		FCB	%01101000
+		FCB	%00000000
+; char 118
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01010000
+		FCB	%00100000
+		FCB	%00000000
+; char 119
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10101000
+		FCB	%10101000
+		FCB	%01010000
+		FCB	%00000000
+; char 120
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%10001000
+		FCB	%01010000
+		FCB	%00100000
+		FCB	%01010000
+		FCB	%10001000
+		FCB	%00000000
+; char 121
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%10001000
+		FCB	%01111000
+		FCB	%00001000
+		FCB	%11110000
+; char 122
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%11111000
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%11111000
+		FCB	%00000000
+; char 123
+		FCB	%00011000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%01000000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00011000
+		FCB	%00000000
+; char 124
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00000000
+; char 125
+		FCB	%11000000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%00010000
+		FCB	%00100000
+		FCB	%00100000
+		FCB	%11000000
+		FCB	%00000000
+; char 126
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%01000000
+		FCB	%10101000
+		FCB	%00010000
+		FCB	%00000000
+		FCB	%00000000
+		FCB	%00000000
+; char 127
+		FCB	%11111000
+		FCB	%11111000
+		FCB	%11111000
+		FCB	%11111000
+		FCB	%11111000
+		FCB	%11111000
+		FCB	%11111000
+		FCB	%00000000
