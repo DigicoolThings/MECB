@@ -1,0 +1,94 @@
+Name            MECB_CHIPSELECT_PROTOTYPE_PLD_22V10;
+Partno          U1;
+Date            05/2025;
+Revision        01;
+Designer        Greg;
+Company         Digicool Things;
+Assembly        None;
+Location        None;
+Device          g22v10;
+
+/****************************************************************/
+/*                                                              */
+/* Note: Device is an ATF22V10C                                 */
+/*                                                              */
+/****************************************************************/
+
+/*
+ *
+ * Inputs: Inputs were assigned based on the ECB bus pin sequence (for ease of PCB routing).
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 1 	= a3;
+Pin 2 	= a4;
+Pin 3 	= a8;
+Pin 4 	= a5;
+Pin 5 	= a7;
+Pin 6 	= a11;
+Pin 7 	= a14;
+Pin 9 	= a12;
+Pin 13	= a9;
+Pin 14 = a13;
+Pin 16 = a15;
+Pin 20 = a10;
+Pin 21	= a6;
+
+Pin 15	= clk;
+Pin 10	= !iorq;
+Pin 11 = !mreq;
+Pin 8 	= !rd; 
+Pin 19 = !wr;
+
+/*
+ *
+ * Outputs: Define outputs
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 23 = !cs0;
+Pin 22 = !cs1;
+Pin 18 = !cs2;
+Pin 17 = !cs3;
+
+
+/*
+ * Memory Map options follow (un-comment only one!)
+ */
+
+
+/*
+ *
+ * Logic: Prototype 22V10 Card - IORQ Address Allocations
+ *
+ * cs0 : iorq asserted for I/O address range 0xE0 - 0xE7
+ * cs1 : iorq asserted for I/O address range 0xE8 - 0xEF
+ * cs2 : iorq asserted for I/O address range 0xF0 - 0xF7
+ * cs3 : iorq asserted for I/O address range 0xF8 - 0xFF
+ *
+ */
+
+cs0 = iorq & a7 & a6 & a5 & !a4 & !a3;
+cs1 = iorq & a7 & a6 & a5 & !a4 & a3;
+cs2 = iorq & a7 & a6 & a5 & a4 & !a3;
+cs3 = iorq & a7 & a6 & a5 & a4 & a3;
+
+
+/*
+ *
+ * Logic: Prototype 22V10 Card - AIM-65 System I/O Space Allocations
+ *
+ * cs0 : mreq asserted for address range 0xA000 - 0xA3FF
+ * cs1 : mreq asserted for address range 0xA400 - 0xA7FF
+ * cs2 : mreq asserted for address range 0xA800 - 0xABFF
+ * cs3 : mreq asserted for address range 0xAC00 - 0xAFFF
+ *
+ */
+/*
+cs0 = mreq & a15 & !a14 & a13 & !a12 & !a11 & !a10;
+cs1 = mreq & a15 & !a14 & a13 & !a12 & !a11 & a10;
+cs2 = mreq & a15 & !a14 & a13 & !a12 & a11 & !a10;
+cs3 = mreq & a15 & !a14 & a13 & !a12 & a11 & a10;
+*/
