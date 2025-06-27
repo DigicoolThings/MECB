@@ -21,25 +21,15 @@ Device          g22v10;
  *
  */
 
-Pin 1 	= a3;
-Pin 2 	= a4;
-Pin 3 	= a8;
-Pin 4 	= a5;
-Pin 5 	= a7;
-Pin 6 	= a11;
-Pin 7 	= a14;
-Pin 9 	= a12;
-Pin 13	= a9;
-Pin 14 = a13;
-Pin 16 = a15;
-Pin 20 = a10;
-Pin 21	= a6;
-
 Pin 15	= clk;
 Pin 10	= !iorq;
 Pin 11 = !mreq;
 Pin 8 	= !rd; 
 Pin 19 = !wr;
+
+Pin [16, 7, 14, 9, 6, 20, 13, 3, 5, 21, 4, 2, 1] = [a15..a3];
+field mem_addr = [a15..a3];
+field io_addr = [a7..a3];
 
 /*
  *
@@ -70,10 +60,10 @@ Pin 17 = !cs3;
  *
  */
 
-cs0 = iorq & a7 & a6 & a5 & !a4 & !a3;
-cs1 = iorq & a7 & a6 & a5 & !a4 & a3;
-cs2 = iorq & a7 & a6 & a5 & a4 & !a3;
-cs3 = iorq & a7 & a6 & a5 & a4 & a3;
+cs0 = iorq & io_addr:[E0..E7];
+cs1 = iorq & io_addr:[E8..EF];
+cs2 = iorq & io_addr:[F0..F7];
+cs3 = iorq & io_addr:[F8..FF];
 
 
 /*
@@ -87,8 +77,8 @@ cs3 = iorq & a7 & a6 & a5 & a4 & a3;
  *
  */
 /*
-cs0 = mreq & a15 & !a14 & a13 & !a12 & !a11 & !a10;
-cs1 = mreq & a15 & !a14 & a13 & !a12 & !a11 & a10;
-cs2 = mreq & a15 & !a14 & a13 & !a12 & a11 & !a10;
-cs3 = mreq & a15 & !a14 & a13 & !a12 & a11 & a10;
+cs0 = mreq & mem_addr:[A000..A3FF];
+cs1 = mreq & mem_addr:[A400..A7FF];
+cs2 = mreq & mem_addr:[A800..ABFF];
+cs3 = mreq & mem_addr:[AC00..AFFF];
 */

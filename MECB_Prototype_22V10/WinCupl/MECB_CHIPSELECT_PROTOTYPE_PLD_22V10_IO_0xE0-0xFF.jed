@@ -1,7 +1,7 @@
 
 CUPL(WM)        5.0a  Serial# 60008009
 Device          g22v10  Library DLIB-h-40-1
-Created         Wed May 28 14:41:17 2025
+Created         Fri Jun 27 08:40:18 2025
 Name            MECB_CHIPSELECT_PROTOTYPE_PLD_22V10
 Partno          U1
 Revision        01
@@ -32,4 +32,4 @@ Location        None
 *L05792 00000000000000000101010000010100
 *L05824 00000101010100110001000000000000
 *C2C22
-*DDE8
+*DDF1
