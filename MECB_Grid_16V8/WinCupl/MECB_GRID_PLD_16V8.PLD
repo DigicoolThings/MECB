@@ -1,0 +1,64 @@
+Name            MECB_Grid_PLD_16V8;
+Partno          U1;
+Date            07/2025;
+Revision        01;
+Designer        Greg;
+Company         Digicool Things;
+Assembly        None;
+Location        None;
+Device          g16v8as;
+
+/****************************************************************/
+/*                                                              */
+/* Note: For an ATF16V8 in Simple Mode pins 15 and 16           */
+/*  (center macrocells) are permanently configured as           */
+/*  combinatorial outputs.                                      */   
+/*                                                              */
+/****************************************************************/
+
+/*
+ *
+ * Inputs: Inputs were assigned based on the ECB bus pin sequence (for ease of PCB routing).
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 9 	= clk;
+Pin 8 	= !iorq;
+Pin 11 = !mreq;
+Pin 6 	= !rd; 
+Pin 17 = !wr;
+
+Pin [13, 5, 12, 7, 18] = [a15..a11];
+Pin [19, 4, 3, 2, 1] = [a7..a3];
+field mem_addr = [a15..a11];
+field io_addr = [a7..a3];
+
+/*
+ *
+ * Outputs: Define outputs
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 14 = !cs0;
+Pin 15 = !cs1;
+Pin 16 = !cs2;
+
+/*
+ * Memory Map options follow (un-comment only one!)
+ */
+
+/*
+ *
+ * Logic: Grid PLD 16V8 Card - I/O Address Allocations
+ *
+ * cs0 : iorq asserted for I/O address range 0xE0 - 0xE7
+ * cs1 : iorq asserted for I/O address range 0xE8 - 0xEF
+ * cs2 : iorq asserted for I/O address range 0xF0 - 0xF7
+ *
+ */
+
+cs0 = iorq & io_addr:[E0..E7];
+cs1 = iorq & io_addr:[E8..EF];
+cs2 = iorq & io_addr:[F0..F7];

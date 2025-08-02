@@ -1,0 +1,84 @@
+Name            MECB_GRID_PLD_22V10;
+Partno          U1;
+Date            07/2025;
+Revision        01;
+Designer        Greg;
+Company         Digicool Things;
+Assembly        None;
+Location        None;
+Device          g22v10;
+
+/****************************************************************/
+/*                                                              */
+/* Note: Device is an ATF22V10C                                 */
+/*                                                              */
+/****************************************************************/
+
+/*
+ *
+ * Inputs: Inputs were assigned based on the ECB bus pin sequence (for ease of PCB routing).
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 15	= clk;
+Pin 10	= !iorq;
+Pin 11 = !mreq;
+Pin 8 	= !rd; 
+Pin 19 = !wr;
+
+Pin [16, 7, 14, 9, 6, 20, 13, 3, 5, 21, 4, 2, 1] = [a15..a3];
+field mem_addr = [a15..a3];
+field io_addr = [a7..a3];
+
+/*
+ *
+ * Outputs: Define outputs
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 23 = !cs0;
+Pin 22 = !cs1;
+Pin 18 = !cs2;
+Pin 17 = !cs3;
+
+
+/*
+ * Memory Map options follow (un-comment only one!)
+ */
+
+
+/*
+ *
+ * Logic: Grid 22V10 Card - IORQ Address Allocations
+ *
+ * cs0 : iorq asserted for I/O address range 0xE0 - 0xE7
+ * cs1 : iorq asserted for I/O address range 0xE8 - 0xEF
+ * cs2 : iorq asserted for I/O address range 0xF0 - 0xF7
+ * cs3 : iorq asserted for I/O address range 0xF8 - 0xFF
+ *
+ */
+
+cs0 = iorq & io_addr:[E0..E7];
+cs1 = iorq & io_addr:[E8..EF];
+cs2 = iorq & io_addr:[F0..F7];
+cs3 = iorq & io_addr:[F8..FF];
+
+
+/*
+ *
+ * Logic: Grid 22V10 Card - AIM-65 System I/O Space Allocations
+ *
+ * cs0 : mreq asserted for address range 0xA000 - 0xA3FF
+ * cs1 : mreq asserted for address range 0xA400 - 0xA7FF
+ * cs2 : mreq asserted for address range 0xA800 - 0xABFF
+ * cs3 : mreq asserted for address range 0xAC00 - 0xAFFF
+ *
+ */
+/*
+cs0 = mreq & mem_addr:[A000..A3FF];
+cs1 = mreq & mem_addr:[A400..A7FF];
+cs2 = mreq & mem_addr:[A800..ABFF];
+cs3 = mreq & mem_addr:[AC00..AFFF];
+*/
