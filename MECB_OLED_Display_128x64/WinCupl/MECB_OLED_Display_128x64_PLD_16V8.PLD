@@ -1,0 +1,65 @@
+Name            MECB_OLED_Display_128x64_PLD_16V8;
+Partno          U1;
+Date            08/2025;
+Revision        01;
+Designer        Greg;
+Company         Digicool Things;
+Assembly        None;
+Location        None;
+Device          g16v8as;
+
+/****************************************************************/
+/*                                                              */
+/* Note: For an ATF16V8 in Simple Mode pins 15 and 16           */
+/*  (center macrocells) are permanently configured as           */
+/*  combinatorial outputs.                                      */   
+/*                                                              */
+/****************************************************************/
+
+/*
+ *
+ * Inputs: Inputs were assigned based on the ECB bus pin sequence (for ease of PCB routing).
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 9 	= clk;
+Pin 8 	= !iorq;
+Pin 11 = !mreq;
+Pin 6 	= !rd; 
+Pin 17 = !wr;
+
+Pin [13, 5, 12, 7, 18] = [a15..a11];
+Pin [19, 4, 3, 2, 1] = [a7..a3];
+field mem_addr = [a15..a11];
+field io_addr = [a7..a3];
+
+/*
+ *
+ * Outputs: Define outputs
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 14 = !cs_oled;
+Pin 15 = !rd_oled;
+Pin 16 = !wr_oled;
+
+/*
+ * Memory Map options follow (un-comment only one!)
+ */
+
+/*
+ *
+ * Logic: OLED Display 128x64 PLD - I/O Address Allocations
+ *
+ * cs_oled : iorq asserted for I/O address range 0x88 - 0x8F
+ * rd_oled : iorq & rd asserted for I/O address range 0x88 - 0x8F
+ * wr_oled : iorq & wr asserted for I/O address range 0x88 - 0x8F 
+ *
+ */
+
+cs_oled = iorq & io_addr:[88..8F];
+rd_oled = iorq & rd & io_addr:[88..8F];
+wr_oled = iorq & wr & io_addr:[88..8F];
+
