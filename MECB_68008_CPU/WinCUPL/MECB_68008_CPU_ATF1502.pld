@@ -1,0 +1,177 @@
+Name            MECB_ChipSelect_68008_CPU_ATF1502;
+Partno          U1;
+Revision        01;
+Date            1/2026;
+Designer        Greg;
+Company         Digicool Things;
+Location        None;
+Assembly        None;
+
+PROPERTY ATMEL { Preassign=keep };
+
+/*
+ * Inputs: define Inputs
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin  1 = hwrst;
+Pin  2 = !cpu_as;
+Pin  4 = cpu_fc0;
+Pin  5 = cpu_fc1;
+Pin  6 = cpu_fc2;
+Pin  8 = !ecb_int;
+Pin  9 = !ecb_nmi;
+Pin 12 = cpu_rw; 
+Pin 43 = !cpu_ds;
+
+Pin [17, 16, 14] = [a21..a19];
+field mem_addr = [a21..a19];
+
+
+/*
+ * Outputs: define outputs
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 18 = !cs_ram0;
+Pin 19 = !cs_ram1;
+Pin 20 = !cs_rom1;
+Pin 21 = !cs_rom0;
+Pin 27 = !ecb_rd;
+Pin 28 = !ecb_wr;
+Pin 29 = !cpu_halt;
+Pin 31 = !ecb_reset;
+Pin 33 = !ecb_mreq;
+Pin 34 = !ecb_iorq;
+Pin 36 = !cpu_ipl0;
+Pin 37 = !cpu_ipl1;
+Pin 39 = !cpu_ipl2;
+Pin 40 = !cpu_dtack;
+
+Pin 41 = !vector;
+
+
+/*
+ * Logic: Interrupt Control
+ *
+ * NMI = Level 7
+ * INT = Level 1
+ *
+ */
+
+cpu_ipl2 = ecb_nmi;
+cpu_ipl1 = ecb_nmi;
+cpu_ipl0 = ecb_nmi # ecb_int;
+
+
+/*
+ * Logic: Bus Control
+ *
+ * ecb_rd = cpu_rw
+ * ecb_wr = !cpu_rw
+ *
+ */
+
+ecb_rd = cpu_rw;
+ecb_wr = !cpu_rw;
+
+
+/*
+ * Logic: Onboard RAM Select
+ *
+ * cs_ram0 = 000000 - 07FFFF and not vector (boot)
+ * cs_ram1 = 080000 - 0FFFFF
+ *
+ */
+
+cs_ram0 = cpu_as & mem_addr:[000000..07FFFF] & !vector;
+cs_ram1 = cpu_as & mem_addr:[080000..0FFFFF];
+
+
+/*
+ * Logic: Onboard ROM Select
+ *
+ * cs_rom0 = 000000 - 07FFFF and vector (boot), or 200000 - 27FFFF 
+ * cs_rom1 = 280000 - 2FFFFF
+ *
+ */
+
+cs_rom0 = cpu_as & mem_addr:[000000..07FFFF] & vector;
+append cs_rom0 = cpu_as & mem_addr:[200000..27FFFF];
+
+cs_rom1 = cpu_as & mem_addr:[280000..2FFFFF];
+
+
+/*
+ * Logic: MECB bus full speed MREQ Select
+ *
+ * ecb_mreq = 100000 - 1FFFFF 
+ *
+ */
+
+ecb_mreq = cpu_as & mem_addr:[100000..1FFFFF];
+
+
+/*
+ * Logic: MECB bus low speed (6800) IORQ Select
+ * (ecb_iorq also defines the 68008 vpa input)
+ *
+ * ecb_iorq = 300000 - 3FFFFF 
+ *
+ */
+
+ecb_iorq = cpu_as & mem_addr:[300000..3FFFFF];
+
+
+/*
+ * Logic: Data Acknowledge (dtack)
+ *
+ * Signal to 68008 that data is ready following appropriate data strobe
+ * i.e. when cpu_ds asserted during a memory cs, or ecb_mreq assertion 
+ * Note: No cpu_dtack delay is required as we're using relatively fast memory
+ *
+ */
+
+cpu_dtack = cpu_ds & (cs_rom0 # cs_rom1 # cs_ram0 # cs_ram1 # ecb_mreq);
+
+
+/*
+ *
+ * Logic: Hard Reset Control
+ *
+ * cpu_halt and cpu_reset are bidirectional control signals (tri-state when not asserted)
+ *
+ */
+
+cpu_halt = hwrst;
+cpu_halt.oe = hwrst;
+
+ecb_reset = hwrst;
+ecb_reset.oe = hwrst;
+
+
+/*
+ *
+ * Logic: Hard Reset Address Strobe Counter
+ *
+ * Q3,Q2,Q1,Q0 form a 4 bit counter to count CPU Address Strobe pulses following Hard Reset
+ *
+ * Q3 going high (count of 8x cpu_as), indicates the reset vectors are now loaded
+ * Q3 therefore sets the vector pin output, and halts the count clock after going high. 
+ *  
+ */
+
+Node [Q3..Q0];
+
+[Q3..0].ck = !cpu_as & !Q3;
+[Q3..0].ar = hwrst;
+
+Q0.d = !Q0;
+Q1.d = Q0 $ Q1;
+Q2.d = Q2 $ (Q1 & Q0);
+Q3.d = Q3 $ (Q2 & Q1 & Q0);
+
+vector = !Q3;
+
