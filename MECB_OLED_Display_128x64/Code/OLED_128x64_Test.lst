@@ -1,0 +1,461 @@
+                      ;******************************************************************************
+                      ;       OLED_128x64_Test.asm
+                      ;
+                      ;       A simple MECB OLED Display 128x64 Card Test (for a 6809 CPU Card).
+                      ;
+                      ;       Set ENTRY EQU for your preferred code assembly location.
+                      ;       e.g. $0100 specified for running the code in the 2nd page of main RAM.
+                      ;       Set OLED EQU for your OLED's base address.
+                      ;       e.g. $C088 is for $C0 IORQ bank and $88 - $8F I/O block allocation. 
+                      ;
+                      ;       Author: Greg
+                      ;       Date:   Aug 2025
+                      ;
+                      ;******************************************************************************
+0100                  ENTRY           EQU     $0100
+C088                  OLED            EQU     $C088           ; OLED Panel base address
+C088                  OLED_CMD        EQU     OLED            ; OLED Command address
+C089                  OLED_DTA        EQU     OLED+1          ; OLED Data address
+007F                  STKTOP          EQU     $007F           ; System Stack Top
+0000                  VX              EQU     $0000           ; X coord
+0001                  VY              EQU     $0001           ; Y coord
+0002                  OLEDRES         EQU     $0002           ; Oled Resolution 0=Off / 1=128x64 / 2=64x32
+                      ;
+                      ; Code Entry Point
+                      ; ----------------
+0100                                  ORG     ENTRY
+                      ; Initialise Direct Page Register for Zero page
+0100 4F                               CLRA
+0101 1F8B                             TFR     A,DP    
+                      ; Tell asm6809 what page the DP register has been set to
+0103                                  SETDP   #$00
+                      ; Set Stack to Stack Top
+0103 10CE007F                         LDS     #STKTOP
+                      ;
+                      ; Initialise our OLED Display Panel
+                      ; There are many settings for the SSD1327, but most are correctly initialised
+                      ; following a Reset.  Therefore, I only update the settings that I wish to
+                      ; change from their default Reset value (as per the SSD1327 datasheet). 
+                      ;
+0107 8E017B                           LDX     #OledInitCmds   ; Load X as pointer to Initialise Command table
+010A C610                             LDB     #16             ; Number of Command bytes in table
+010C A680             LoadCmdLoop     LDA     ,X+             ; Load register data pointed to by X and increment X
+010E B7C088                           STA     OLED_CMD        ; Store Command byte
+0111 5A                               DECB                    ; Point to next register
+0112 26F8                             BNE     LoadCmdLoop     ; Have we done all Command bytes?
+                      ; Clear the Display Buffer (VRAM)
+0114 4F                               CLRA                    ; Zero byte to Clear Display buffer (VRAM)
+0115 5F                               CLRB                    ; Full Display (Start row = 0)
+0116 1700AE                           LBSR    OledFill        ; Fill OLED Display
+                      ; Turn ON the Display           
+0119 86AF                             LDA     #$AF            ; Turn Display ON (after clearing buffer)
+011B B7C088                           STA     OLED_CMD        ;
+                      ; Set Default Full OLED resolution mode 128x64
+011E 8601                             LDA     #$01            ; Full OLED resolution mode 128x64
+0120 9702                             STA     OLEDRES         ;
+                      ; Fill the Display
+                      ;               LDA     #$FF            ; Display Data
+                      ;               CLRB                    ; Full Display (Start row = 0)
+                      ;               LBSR    OledFill        ; Fill OLED Display
+                      ;
+                      ; Draw some diagonal lines - First do two full resolution lines (128x64)
+0122 8600                             LDA     #0              ; Setup initial X coord
+0124 9700                             STA     VX
+0126 8600                             LDA     #0              ; Setup initial Y coord
+0128 9701                             STA     VY
+012A 8640                             LDA     #64             ; Line length (X count)
+012C 170084           DrawLp1         LBSR    TglPxl          ; Set the Pixel
+012F 0C00                             INC     VX              ; Increment X coord
+0131 0C01                             INC     VY              ; Increment Y coord
+0133 9100                             CMPA    VX              ; End of Line?
+0135 26F5                             BNE     DrawLp1         ; Continue line if not
+                      ;
+0137 8600                             LDA     #0              ; Setup initial X coord
+0139 9700                             STA     VX
+013B 863F                             LDA     #63             ; Setup initial Y coord
+013D 9701                             STA     VY
+013F 8640                             LDA     #64             ; End X count
+0141 17006F           DrawLp2         LBSR    TglPxl          ; Set the Pixel
+0144 0C00                             INC     VX              ; Increment X coord
+0146 0A01                             DEC     VY              ; Decrement Y coord
+0148 9100                             CMPA    VX              ; End of Line?
+014A 26F5                             BNE     DrawLp2         ; Continue line if not
+                      ;               
+                      ; Draw some diagonal lines - Next do two half resolution lines (64x32)
+014C 8602                             LDA     #$02            ; Set Half OLED resolution mode 64x32
+014E 9702                             STA     OLEDRES         ;
+                      ;
+0150 8620                             LDA     #32             ; Setup initial X coord
+0152 9700                             STA     VX
+0154 8600                             LDA     #0              ; Setup initial Y coord
+0156 9701                             STA     VY
+0158 8640                             LDA     #64             ; End X count
+015A 170056           DrawLp3         LBSR    TglPxl          ; Set the Pixel
+015D 0C00                             INC     VX              ; Increment X coord
+015F 0C01                             INC     VY              ; Increment Y coord
+0161 9100                             CMPA    VX              ; End of Line?
+0163 26F5                             BNE     DrawLp3
+                      ;
+0165 8620                             LDA     #32             ; Setup initial X coord
+0167 9700                             STA     VX
+0169 861F                             LDA     #31             ; Setup initial Y coord
+016B 9701                             STA     VY
+016D 8640                             LDA     #64             ; End X count
+016F 170041           DrawLp4         LBSR    TglPxl          ; Set the Pixel
+0172 0C00                             INC     VX              ; Increment X coord
+0174 0A01                             DEC     VY              ; Decrement Y coord
+0176 9100                             CMPA    VX              ; End of Line?
+0178 26F5                             BNE     DrawLp4
+                      ;
+017A 39                               RTS                     ; Return
+                      ;
+                      ; Data Structures
+                      ; ---------------
+017B B370             OledInitCmds    FCB     $B3,$70         ; Set Clk Divider / Osc Fequency
+017D A051                             FCB     $A0,$51         ; Set appropriate Display re-map
+017F D562                             FCB     $D5,$62         ; Enable second pre-charge
+0181 817F                             FCB     $81,$7F         ; Set contrast (0 - $FF)
+0183 B174                             FCB     $B1,$74         ; Set phase length - Phase 1 = 4 DCLK / Phase 2 = 7 DCLK
+0185 B60F                             FCB     $B6,$0F         ; Set second pre-charge period
+0187 BC07                             FCB     $BC,$07         ; Set pre-charge voltage - 0.613 x Vcc
+0189 BE07                             FCB     $BE,$07         ; Set VCOMH - 0.86 x Vcc
+                      ;
+                      ; Subroutines
+                      ; -----------
+018B                  SetPxl
+                      ; Function:     Set the Pixel at VX,VY (Res as per OLEDRES)
+                      ; Parameters:   VX - X coord (0 - 63 / 127)
+                      ;               VY - Y coord (0 - 31 / 63)
+                      ; Returns:      -
+                      ; Destroys:     -
+018B 3406                             PSHS    A,B
+018D 9602                             LDA     OLEDRES         ; Get OLED resolution flag
+018F 270B                             BEQ     SetPxlRts       ; Nothing to do
+0191 44                               LSRA                    ; Test for Full res mode
+0192 2705                             BEQ     SetPxl2         ;
+0194 1700C0                           LBSR    SetPxlH         ; Assume Half Res Mode
+0197 2003                             BRA     SetPxlRts       ;
+0199 1700A9           SetPxl2         LBSR    SetPxlF         ; Full Res Mode
+019C 3506             SetPxlRts       PULS    A,B
+019E 39                               RTS
+                      ;
+019F                  ClrPxl
+                      ; Function:     Clear the Pixel at VX,VY (Res as per OLEDRES)
+                      ; Parameters:   VX - X coord (0 - 63 / 127)
+                      ;               VY - Y coord (0 - 31 / 63)
+                      ; Returns:      -
+                      ; Destroys:     -
+019F 3406                             PSHS    A,B
+01A1 9602                             LDA     OLEDRES         ; Get OLED resolution flag
+01A3 270B                             BEQ     ClrPxlRts       ; Nothing to do
+01A5 44                               LSRA                    ; Test for Full res mode
+01A6 2705                             BEQ     ClrPxl2         ;
+01A8 1700CB                           LBSR    ClrPxlH         ; Assume Half Res Mode
+01AB 2003                             BRA     ClrPxlRts       ;
+01AD 1700B3           ClrPxl2         LBSR    ClrPxlF         ; Full Res Mode
+01B0 3506             ClrPxlRts       PULS    A,B
+01B2 39                               RTS
+                      ;
+01B3                  TglPxl
+                      ; Function:     Toggle (invert) the Pixel value at VX,VY (Res as per OLEDRES)
+                      ; Parameters:   VX - X coord (0 - 63 / 127)
+                      ;               VY - Y coord (0 - 31 / 63)
+                      ; Returns:      -
+                      ; Destroys:     -
+01B3 3406                             PSHS    A,B
+01B5 9602                             LDA     OLEDRES         ; Get OLED resolution flag
+01B7 270B                             BEQ     TglPxlRts       ; Nothing to do
+01B9 44                               LSRA                    ; Test for Full res mode
+01BA 2705                             BEQ     TglPxl2         ;
+01BC 1700D5                           LBSR    TglPxlH         ; Assume Half Res Mode
+01BF 2003                             BRA     TglPxlRts       ;
+01C1 1700BD           TglPxl2         LBSR    TglPxlF         ; Full Res Mode
+01C4 3506             TglPxlRts       PULS    A,B
+01C6 39                               RTS
+                      ;
+01C7                  OledFill
+                      ; Function:     Fill OLED display VRAM with byte, from a specified start row
+                      ; Parameters:   A - Byte to fill OLED buffer with
+                      ;               B - Start Row (i.e. 0 for full panel fill)
+                      ; Returns:      -
+                      ; Destroys:     B,Y
+01C7 1F02                             TFR     D,Y             ; Save Parameters
+                      ;
+01C9 4F                               CLRA                    ; Set Column Address range
+01CA C67F                             LDB     #127            ; Start =0, End = 127
+01CC 1700D1                           LBSR    ColSetF         ;
+                      ;
+01CF 1F20                             TFR     Y,D             ; Restore Parameters
+01D1 3402                             PSHS    A               ; Save Byte to fill
+01D3 1F98                             TFR     B,A             ; Set Row Address range
+                      
+01D5 108E0000                         LDY     #0              ; Establish Count of Bytes to Write
+01D9 31A90080         WrtDtaLp1       LEAY    128,Y           ; Add 128 to Y
+01DD 5C                               INCB
+01DE C140                             CMPB    #64
+01E0 26F7                             BNE     WrtDtaLp1
+                      ;
+01E2 C63F                             LDB     #63             ; Start = A, End = 63
+01E4 1700DB                           LBSR    RowSetF         ;
+01E7 3502                             PULS    A               ; Restore Byte to fill
+01E9 B7C089           WrtDtaLp2       STA     OLED_DTA        ; Write Byte to curent buffer location
+01EC 313F                             LEAY    -1,Y            ; Dec Y
+01EE 26F9                             BNE     WrtDtaLp2       ; Done?
+01F0 39                               RTS
+                      ;
+                      ; Support Subroutines
+                      ; -------------------
+01F1                  UpdPxlStpF
+                      ; Function:     Update Pixel - Setup for Set, Clr, Tgl subroutines (128x64 res)
+                      ;               Note: As SSD1327 stores 2 pixels in each byte, it's
+                      ;               necessary to get the VRAM byte first, to avoid overwriting
+                      ;               the neighbouring pixel (hence call to GetPxlBytF).
+                      ; Parameters:   VX - X coord (0 - 127)
+                      ;               VY - Y coord (0 - 63)
+                      ; Returns:      B - Pixel value at X,Y (appropriate nibble)
+                      ; Destroys:     A,B
+01F1 8D28                             BSR     GetPxlBytF      ; Get curent pixel byte values
+01F3 3404                             PSHS    B               ; Save current pixel byte
+01F5 D601                             LDB     VY              ; Retrieve Y coord
+01F7 1F98                             TFR     B,A             ; 
+01F9 1700C6                           LBSR    RowSetF         ; Set Row of pixel
+01FC 9600                             LDA     VX              ; Retrieve X coord
+01FE 1F89                             TFR     A,B             ; 
+0200 17009D                           LBSR    ColSetF         ; Set Column of pixel
+0203 3504                             PULS    B               ; Retrieve current pixel
+0205 39                               RTS
+                      ;
+0206                  UpdPxlStpH
+                      ; Function:     Update Pixel - Setup for SetH, ClrH, TglH subroutines (64x32 res)
+                      ;               Note: As SSD1327 stores 2 pixels in each byte, half Resolution
+                      ;               is easily achieved as we're updating 2 pixels for every "pixel"
+                      ; Parameters:   VX - X coord (0 - 63)
+                      ;               VY - Y coord (0 - 31)
+                      ; Returns:      B - Pixel value at A,B (dual even pixel byte)
+                      ; Destroys:     A,B
+0206 8D28                             BSR     GetPxlBytH      ; Get curent pixel byte value
+0208 3404                             PSHS    B               ; Save current pixel byte
+020A D601                             LDB     VY              ; Retrieve Y coord
+020C 1F98                             TFR     B,A             ; 
+020E 1700C1                           LBSR    RowSetH         ; Set Row of pixel
+0211 9600                             LDA     VX              ; Retrieve X coord
+0213 1F89                             TFR     A,B             ; 
+0215 17009A                           LBSR    ColSetH         ; Set Column of pixel
+0218 3504                             PULS    B               ; Retrieve current pixel
+021A 39                               RTS
+                      ;
+021B                  GetPxlBytF
+                      ; Function:     Get the Pixel Byte at VX,VY
+                      ; Parameters:   VX - X coord (0 - 127)
+                      ;               VY - Y coord (0 - 63)
+                      ; Returns:      B - Pixel value at A,B (appropriate nibble)
+                      ; Destroys:     A,B
+021B D601                             LDB     VY              ; Retrieve Y coord
+021D 1F98                             TFR     B,A             ; 
+021F 1700A0                           LBSR    RowSetF         ; Set Row of pixel
+0222 9600                             LDA     VX              ; Retrieve X coord
+0224 1F89                             TFR     A,B             ; 
+0226 170077                           LBSR    ColSetF         ; Set Column of pixel
+0229 F6C089                           LDB     OLED_DTA        ; Dummy Read
+022C F6C089                           LDB     OLED_DTA        ; Actual Read
+022F 39                               RTS
+                      ;
+0230                  GetPxlBytH
+                      ; Function:     Get the Pixel Byte at VX,VY
+                      ; Parameters:   VX - X coord (0 - 63)
+                      ;               VY - Y coord (0 - 31)
+                      ; Returns:      B - Pixel value at A,B (dual even pixel byte)
+                      ; Destroys:     A,B
+0230 D601                             LDB     VY              ; Retrieve V coord
+0232 1F98                             TFR     B,A             ; 
+0234 17009B                           LBSR    RowSetH         ; Set Row of pixel
+0237 9600                             LDA     VX              ; Retrieve X coord
+0239 1F89                             TFR     A,B             ; 
+023B 170074                           LBSR    ColSetH         ; Set Column of pixel
+023E F6C089                           LDB     OLED_DTA        ; Dummy Read
+0241 F6C089                           LDB     OLED_DTA        ; Actual Read
+0244 39                               RTS
+                      ;
+0245                  SetPxlF
+                      ; Function:     Set the Pixel at VX,VY (128x64 Res)
+                      ;               Note: As SSD1327 stores 2 pixels in each byte, it's
+                      ;               necessary to get the VRAM byte first, to avoid overwriting
+                      ;               the neighbouring pixel.
+                      ; Parameters:   VX - X coord (0 - 127)
+                      ;               VY - Y coord (0 - 63)
+                      ; Returns:      -
+                      ; Destroys:     A,B
+0245 8DAA                             BSR     UpdPxlStpF      ; Setup for updating the pixel
+0247 9600                             LDA     VX
+0249 8501                             BITA    #$01            ; Test if we're updating odd column?
+024B 2704                             BEQ     WasEvnSet       ;
+024D CA0F                             ORB     #$0F            ; Set for odd column pixel
+024F 2002                             BRA     StrPxlSet       ;
+0251 CAF0             WasEvnSet       ORB     #$F0            ; Set for even column pixel
+0253 F7C089           StrPxlSet       STB     OLED_DTA        ;
+0256 39                               RTS
+                      ;
+0257                  SetPxlH
+                      ; Function:     Set the Pixel at VX,VY (64x32 Res)
+                      ;               Note: As SSD1327 stores 2 pixels in each byte, half resolution
+                      ;               is easily achieved as we're updating 2 pixels for every "pixel"
+                      ; Parameters:   VX - X coord (0 - 63)
+                      ;               VY - Y coord (0 - 31)
+                      ; Returns:      -
+                      ; Destroys:     A,B
+0257 17FFAC                           LBSR    UpdPxlStpH      ; Setup for updating the pixel
+025A C6FF                             LDB     #$FF            ; Set double pixel
+025C F7C089                           STB     OLED_DTA        ;
+025F F7C089                           STB     OLED_DTA        ;
+0262 39                               RTS
+                      ;
+0263                  ClrPxlF
+                      ; Function:     Clear the Pixel at VX,VY (128x64 Res)
+                      ;               Note: As SSD1327 stores 2 pixels in each byte, it's
+                      ;               necessary to get the VRAM byte first, to avoid overwriting
+                      ;               the neighbouring pixel.
+                      ; Parameters:   VX - X coord (0 - 127)
+                      ;               VY - Y coord (0 - 63)
+                      ; Returns:      -
+                      ; Destroys:     A,B
+0263 17FF8B                           LBSR    UpdPxlStpF      ; Setup for updating the pixel
+0266 9600                             LDA     VX
+0268 8501                             BITA    #$01            ; Test if we're updating odd column?
+026A 2704                             BEQ     WasEvnClr       ;
+026C C4F0                             ANDB    #$F0            ; Clear odd column pixel
+026E 2002                             BRA     StrPxlClr       ;
+0270 C40F             WasEvnClr       ANDB    #$0F            ; Clear even column pixel
+0272 F7C089           StrPxlClr       STB     OLED_DTA        ;
+0275 39                               RTS
+                      ;
+0276                  ClrPxlH
+                      ; Function:     Clear the Pixel at VX,VY (64x32 Res)
+                      ;               Note: As SSD1327 stores 2 pixels in each byte, half resolution
+                      ;               is easily achieved as we're updating 2 pixels for every "pixel"
+                      ; Parameters:   VX - X coord (0 - 63)
+                      ;               VY - Y coord (0 - 31)
+                      ; Returns:      -
+                      ; Destroys:     A,B
+0276 17FF8D                           LBSR    UpdPxlStpH      ; Setup for updating the pixel
+0279 5F                               CLRB                    ; Clear double pixel
+027A F7C089                           STB     OLED_DTA        ;
+027D F7C089                           STB     OLED_DTA        ;
+0280 39                               RTS
+                      ;
+0281                  TglPxlF
+                      ; Function:     Toggle (invert) the Pixel value at VX,VY (128x64 res)
+                      ;               Note: As SSD1327 stores 2 pixels in each byte, it's
+                      ;               necessary to get the VRAM byte first, to avoid overwriting
+                      ;               the neighbouring pixel.
+                      ; Parameters:   VX - X coord (0 - 127)
+                      ;               VY - Y coord (0 - 63)
+                      ; Returns:      -
+                      ; Destroys:     A,B
+0281 17FF6D                           LBSR    UpdPxlStpF      ; Setup for updating the pixel
+0284 9600                             LDA     VX
+0286 8501                             BITA    #$01            ; Test if we're updating odd column?
+0288 2704                             BEQ     WasEvnTgl       ;
+028A C80F                             EORB    #$0F            ; Invert odd column pixel
+028C 2002                             BRA     StrPxlTgl       ;
+028E C8F0             WasEvnTgl       EORB    #$F0            ; Invert even column pixel
+0290 F7C089           StrPxlTgl       STB     OLED_DTA        ;
+0293 39                               RTS
+                      ;
+0294                  TglPxlH
+                      ; Function:     Toggle (invert) the Pixel value at VX,VY (64x32 res)
+                      ;               Note: As SSD1327 stores 2 pixels in each byte, half resolution
+                      ;               is easily achieved as we're updating 2 pixels for every "pixel"
+                      ; Parameters:   VX - X coord (0 - 63)
+                      ;               VY - Y coord (0 - 31)
+                      ; Returns:      -
+                      ; Destroys:     A,B
+0294 17FF6F                           LBSR    UpdPxlStpH      ; Setup for updating the pixel
+0297 C8FF                             EORB    #$FF            ; Invert column dual pixel
+0299 F7C089                           STB     OLED_DTA        ;
+029C F7C089                           STB     OLED_DTA        ;
+029F 39                               RTS
+                      ;
+02A0                  ColSetF
+                      ; Function:     Set the Display buffer Column Start and End addresses (128x64 res)
+                      ; Parameters:   A - Start column (0 - 127)
+                      ;               B - End column  (0 - 127)
+                      ; Returns:      -
+                      ; Destroys:     A,B
+02A0 3402                             PSHS    A               ;
+02A2 8615                             LDA     #$15            ; Set Column Address Command
+02A4 B7C088                           STA     OLED_CMD        ;
+02A7 3502                             PULS    A               ; Start column (left)
+02A9 44                               LSRA                    ; Div A by 2 (2 pixels per byte)
+02AA B7C088                           STA     OLED_CMD        ;
+02AD 54                               LSRB                    ; Div B by 2 (2 pixels per byte)
+02AE F7C088                           STB     OLED_CMD        ; End column address (right)
+02B1 39                               RTS
+                      ;
+02B2                  ColSetH
+                      ; Function:     Set the Display buffer Column Start and End addresses (64x32 res)
+                      ; Parameters:   A - Start column (0 - 63)
+                      ;               B - End column  (0 - 63)
+                      ; Returns:      -
+                      ; Destroys:     -
+02B2 3402                             PSHS    A               ;
+02B4 8615                             LDA     #$15            ; Set Column Address Command
+02B6 B7C088                           STA     OLED_CMD        ;
+02B9 3502                             PULS    A               ; Start column (left)
+02BB B7C088                           STA     OLED_CMD        ;
+02BE F7C088                           STB     OLED_CMD        ; End column address (right)
+02C1 39                               RTS
+                      ;
+02C2                  RowSetF
+                      ; Function:     Set the Display buffer Row Start and End addresses (128x64 res)
+                      ; Parameters:   A - Start row (0 - 63)
+                      ;               B - End row (0 - 63) 
+                      ; Returns:      -
+                      ; Destroys:     -
+02C2 3402                             PSHS    A               ; Save A
+02C4 8675                             LDA     #$75            ; Set Row Address Command
+02C6 B7C088                           STA     OLED_CMD        ;
+02C9 3502                             PULS    A               ; Start row (top)
+02CB B7C088                           STA     OLED_CMD        ;
+02CE F7C088                           STB     OLED_CMD        ; End row (bottom)
+02D1 39                               RTS
+                      ;
+02D2                  RowSetH
+                      ; Function:     Set the Display buffer Row Start and End addresses (64x32 res)
+                      ; Parameters:   A - Start row (0 - 31)
+                      ;               B - End row (0 - 31) 
+                      ; Returns:      -
+                      ; Destroys:     A,B
+02D2 3402                             PSHS    A               ; Save A
+02D4 8675                             LDA     #$75            ; Set Row Address Command
+02D6 B7C088                           STA     OLED_CMD        ;
+02D9 3502                             PULS    A               ; Start row (top)
+02DB 48                               LSLA                    ;
+02DC B7C088                           STA     OLED_CMD        ;
+02DF 58                               LSLB                    ;
+02E0 CB01                             ADDB    #$01            ;
+02E2 F7C088                           STB     OLED_CMD        ; End row (bottom)
+02E5 39                               RTS
+                      ;
+02E6                  OledFillAll
+                      ; Function:     Fill OLED display VRAM with byte (note 1 byte = 2 pixels)
+                      ; Parameters:   A - Byte to fill OLED buffer with
+                      ; Returns:      -
+                      ; Destroys:     Y
+02E6 108E1000                         LDY     #4096           ; 64 x 64 bytes (128 x 64 pixels)
+02EA 3402                             PSHS    A               ; Save Byte we want to fill with
+                      ;
+02EC 4F                               CLRA                    ; Set Column Address range
+02ED C67F                             LDB     #127            ; Start =0, End = 127
+02EF 8DAF                             BSR     ColSetF ;
+                      ;
+02F1 4F                               CLRA                    ; Set Row Address range
+02F2 C63F                             LDB     #63             ; Start = 0, End = 63
+02F4 8DCC                             BSR     RowSetF ;
+                      ;
+02F6 3502                             PULS    A               ; Restore Byte we want to fill with
+02F8 B7C089           WrtDtaLp        STA     OLED_DTA        ; Write Byte to current buffer location
+02FB 303F                             LEAX    -1,Y            ; Dec Y
+02FD 26F9                             BNE     WrtDtaLp        ; Done?
+02FF 39                               RTS
+                      ;
+0300                                  END
