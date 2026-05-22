@@ -51,19 +51,19 @@ Pin 19 = !ecb_wr;
  *
  * Logic: 6802 CPU Card - Default Bus Control  
  *
- * ecb_mreq : ioaddr not asserted, while cpu_e high.
- * ecb_iorq : ioaddr asserted, while cpu_e high.
+ * ecb_mreq : cpu_vma asserted and ioaddr not asserted, while cpu_e high.
+ * ecb_iorq : cpu_vma and ioaddr asserted, while cpu_e high.
  * ecb_clk : cpu_e
- * ecb_rd : cpu_rw is high, while cpu_vma high.
- * ecb_wr : cpu_rw is low, while cpu_vma high.
+ * ecb_rd : cpu_vma asserted and cpu_rw is high, while cpu_e high.
+ * ecb_wr : cpu_vma asserted and cpu_rw is low, while cpu_e high.
  *
  */
 
-ecb_mreq = !ioaddr & cpu_e;
-ecb_iorq =  ioaddr & cpu_e;
+ecb_mreq = cpu_vma & !ioaddr & cpu_e;
+ecb_iorq = cpu_vma & ioaddr & cpu_e;
 ecb_clk = cpu_e;
-ecb_rd = cpu_rw & cpu_vma;
-ecb_wr = !cpu_rw & cpu_vma;
+ecb_rd = cpu_vma & cpu_rw & cpu_e;
+ecb_wr = cpu_vma & !cpu_rw & cpu_e;
 
 
 /*
@@ -82,7 +82,7 @@ ecb_wr = !cpu_rw & cpu_vma;
 
 cs_rom = ecb_mreq & mem_addr:[E000..FFFF];
 cs_ram = ecb_mreq & mem_addr:[0000..DFFF];
-cs_spare = ioaddr & cpu_e;
+cs_spare = ecb_iorq;
 
 
 /*
@@ -97,7 +97,7 @@ cs_spare = ioaddr & cpu_e;
 /*
 cs_rom = ecb_mreq & mem_addr:[C000..FFFF];
 cs_ram = ecb_mreq & mem_addr:[0000..BFFF];
-cs_spare = ioaddr & cpu_e;
+cs_spare = ecb_iorq;
 */
 
 
@@ -113,5 +113,5 @@ cs_spare = ioaddr & cpu_e;
 /*
 cs_rom = ecb_mreq & mem_addr:[8000..FFFF];
 cs_ram = ecb_mreq & mem_addr:[0000..7FFF];
-cs_spare = ioaddr & cpu_e;
+cs_spare = ecb_iorq;
 */

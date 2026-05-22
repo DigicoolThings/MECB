@@ -1,0 +1,20 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+        {
+            "label": "Build with asl -> .s19 & .bin output",
+            "type": "shell",
+            "windows": {
+                "command": "asl -L -OLIST build\\${fileBasenameNoExtension}.lst ${relativeFile};move src\\${fileBasenameNoExtension}.p .\\build;cd .\\build;p2bin ${fileBasenameNoExtension}.p;p2hex +5 -F Moto ${fileBasenameNoExtension}.p;del ${fileBasenameNoExtension}.s19;ren ${fileBasenameNoExtension}.hex ${fileBasenameNoExtension}.s19;del ${fileBasenameNoExtension}.p"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "never"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
