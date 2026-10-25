@@ -50,23 +50,26 @@
 ;
         CPU     6800        ; Specify MC6800 processor code (asl Assembler)
 ;
+VERSTR  EQU     "v1.01"     ; Version
+;
         ORG     $DF00       ; Start of RAM workspace
 ;
 IOV     RMB     2           ; IRQ Interrupt vector
 BEGA    RMB     2           ; Entered Begin Address (Start)
 ENDA    RMB     2           ; Entered End Address (Thru)
 NIO     RMB     2           ; NMI Interrupt vector (initially set to SWI vector)
-SP      RMB 2
+SP      RMB     2           ; Saved Stack Pointer address
 ACIAT   RMB     1           ; ACIA control register setting
 ECHO    RMB     1           ; Echo On = non-zero Flag
 ADDRHI  RMB     1           ; Temporary Address (Hi)
 ADDRLO  RMB     1           ; Temporary Address (Lo)
-TEMP    RMB 1
-TW      RMB 2
-TFLAG   RMB 1
+;TEMP    RMB 1
+;TW      RMB 2
+TEMP    RMB     2           ; Temporary 8 or 16 bit storage
+TFLAG   RMB     1           ; Trace flag
 XTEMP   RMB     2           ; Temporary X register (for 16 bit addition)
-BKFLG   RMB 1
-SWIPTR  RMB     45          ; SWI Interrupt vector
+BKFLG   RMB     1           ; Breakpoint flag (zero or saved byte / OpCode)
+SWIPTR  RMB     45          ; SWI Interrupt vector (with 43 byte Stack buffer)
 STACK   RMB     8           ; STACK allocated 8 bytes for SP+7 initial R values
 PRINTR  RMB 3
 BFLAG   RMB 1
@@ -83,8 +86,8 @@ BYTECT  RMB 1
 PC1     RMB 1
 PC2     RMB 1
 BPOINT  RMB 3
-BKFLG2  RMB 1
-MCONT   RMB 1
+BKFLG2  RMB     1           ; Breakpoint 2 flag (zero or saved byte / OpCode)
+MCONT   RMB     1           ; Counter - Counts CC bits and memory View lines
 RECTYP  RMB     1           ; S1/S9 Record Type
 BYTECNT RMB     1           ; S1/S9 Line byte count
 CHKSUM  RMB     1           ; S1/S9 calculated checksum
@@ -121,19 +124,19 @@ _OUTCH	JMP     OUTEEE      ; Output character (redirect to OUTEEE)
 _INCH   JMP     INEEE       ; Input character (Redirect to INEEE)
 _OUTSTR	JMP     OUTSTR      ; Output EOT terminated string at X
 _OUT2H	JMP     OUT2H       ; Output 2 Hex digits of byte at X (X = X+1)
-_OUT4HS	JMP     OUT4HS      ; Output 4 Hex digits and space of 2 bytes at X (X = X+2)
-_OUT2HS	JMP     OUT2HS      ; Output 2 Hex digits and space of byte at X (X = X+2)
+_OUT4HS	JMP     OUT4HS      ; Output 4 Hex digits + space of 2 bytes at X (X = X+2)
+_OUT2HS	JMP     OUT2HS      ; Output 2 Hex digits + space of byte at X (X = X+1)
 _OCRLF  JMP     OCRLF       ; Output Carriage Return / Line Feed
 ;
 ; Monitor Cold Start (Reset) entry point
 ;
 START   LDS     #STACK      ; Initialise Stack Pointer
-        STS     SP
+        STS     SP          ; Initialise saved Stack Pointer address
         LDAA    #1          ; Set ECHP flag (non-zero)
         STAA    ECHO        ; ECHO On
-        LDX     #SFE        ; Initialise SWI & NMI vectors
-        STX     SWIPTR
-        STX     NIO
+        LDX     #SWINTR     ; Initialise SWI & NMI vectors
+        STX     SWIPTR      ; SWI Vector initialised to point to SWINTR Routine
+        STX     NIO         ; NMI Vector initialised to point to SWINTR Routine
 ;
 ; ACIA Initialise
 ;
@@ -148,7 +151,7 @@ START   LDS     #STACK      ; Initialise Stack Pointer
 ;
 ; Cold Start Prompt
 ;
-        LDX     #CSPRMPT    ; Display the full Cold Start title
+        LDX     #CSTTL      ; Display the full Cold Start title
         BSR     OUTSTR
 ;
 ; Monitor Warm Start (Command Control)
@@ -156,9 +159,9 @@ START   LDS     #STACK      ; Initialise Stack Pointer
 CONTRL  LDAA    ACIAT       ; Restore ACIA to DigiBug setting
         STAA    ACIACS
         LDS     #STACK      ; Reset CONTRL Stack Pointer
-        CLR     TFLAG
-        CLR     BKFLG
-        CLR     BKFLG2
+        CLR     TFLAG       ; Clear Trace flag
+        CLR     BKFLG       ; Clear Breakpoint flag
+        CLR     BKFLG2      ; Clear Breakpoint 2 flag
         LDX     #PROMPT     ; Display the prompt
         BSR     OUTSTR
         BSR     INCH        ; Await a command character
@@ -187,13 +190,13 @@ IO      LDX     IOV
 ;
 ; NMI Interrupt Vector Redirect
 ;
-POWDWN  LDX     NIO
-        JMP     0,X
+POWDWN  LDX     NIO         ; Load X with NMI Vector
+        JMP     0,X         ; Jump to NMI service routine
 ;
 ; SWI Interrupt Vector Redirect
 ;
-SWI     LDX     SWIPTR
-        JMP     0,X
+SWI     LDX     SWIPTR      ; Load X with SWI Vector
+        JMP     0,X         ; Jump to SWI service routine
 ;
 ; OQSTNE routine
 ;
@@ -205,11 +208,11 @@ OQSTNE  LDAA    #$3F        ; Print question mark "?"
         BSR     OUTCH
 C1      BRA     CONTRL      ; Exit to CONTRL
 ;
-; Build Address routine
+; Input 4 digit Hex Address routine
 ;
 ; Function:
 ; Parameters: -
-; Returns:	- X / ADDRHI = Entered address
+; Returns:	- X and ADDRHI/LO = Entered address
 ; Destroys:	- A,B
 INADDR  BSR     INBYTE
         STAA    ADDRHI
@@ -261,9 +264,11 @@ OUTSTR  LDAA    0,X         ; Read next character
 ;
 ; Edit (Change) Memory
 ;
-CHANGE  BSR     INADDR
-CHA51   LDX     #PROMPT
-        BSR     OUTSTR
+CHANGE  JSR     BAD2
+;CHANGE  BSR     INADDR      ; Input 4 digit Hex Address (to X & ADDRHI/LO)
+;CHA51   LDX     #PROMPT     ; Display the prompt
+;        BSR     OUTSTR
+CHA51   JSR     OCRLF       ; Output new line
         BSR     OUTAHI
         BSR     OUT2HS
         STX     ADDRHI
@@ -308,7 +313,7 @@ OUT2H   LDAA    0,X
 ;
 OUT4HS  BSR     OUT2H
 OUT2HS  BSR     OUT2H
-OUTS    LDAA    #SPC        ; Ouput a space character and return
+OUTS    LDAA    #SPC        ; Output a space character and return
         BRA     OUTCH
 ;
 ; SET BREAK POINTS
@@ -331,26 +336,29 @@ BKPNT   JSR ADDR
 ;
 ; FALL INTO GO COMMAND
 ;
-CONTG   LDS SP
+CONTG   LDS     SP          ; Load the saved Stack Pointer
         RTI
 ;
-; PRINT ADDRHI ADDRESS SUB
+; Output ADDRHI (Address) subroutine
 ;
+; Parameters: -
+; Returns:	- X = ADDRHI Address value
+; Destroys:	- A
 OUTAHI  LDX #ADDRHI
         BSR OUT4HS
         LDX ADDRHI
         RTS
 ;
-; VECTORED SWI ROUTINE
+; SWI Service Routine
 ;
-SFE     STS SP
+SWINTR  STS     SP          ; Save the Stack Pointer
         TSX
         TST 6,X
-        BNE *+4
+        BNE     SKP1        ; 
         DEC 5,X
-        DEC 6,X
+SKP1    DEC 6,X
         LDS #TSTACK
-        TST TFLAG
+        TST     TFLAG       ; Test Trace flag
         BEQ PRINT
         LDX PC1
         LDAA OPSAVE
@@ -380,50 +388,51 @@ DSOOP1  JSR     OUTEEE      ; Output character (or "-" if bit wasn't set)
         INX                 ; Next CC bit
         DEC     MCONT       ; Have we done all 6 CC bits?
         BNE     DSOOP       ; If not, do next one
-        LDX     #BREG
-        BSR     PDAT
+        LDX     #BREG       ; Output " B="
+        JSR     OUTSTR
         LDX     SP          ; Initialise X with saved Stack Pointer
         INX                 ; Point X at B register content
         INX
-        JSR     OUT2HS      ; Output 2 Hex Digits (at X location)
+        JSR     OUT2HS      ; Output 2 Hex Digits + Space (at X location)
         STX     TEMP        ; Save X
         LDX     #AREG       ; Ouput "A="
-        BSR     PDAT
+        JSR     OUTSTR
         LDX     TEMP        ; Restore X
         JSR     OUT2HS
-        STX     TEMP
-        LDX     #XREG
-        BSR     PDAT
-        LDX     TEMP
-        BSR     PRTS
-        STX     TEMP
-        TST     TFLAG
+        STX     TEMP        ; Save X
+        LDX     #XREG       ; Output "X="
+        JSR     OUTSTR
+        LDX     TEMP        ; Restore X
+        JSR     OUT4HS
+        STX     TEMP        ; Save X
+        TST     TFLAG       ; Test Trace flag
         BNE     PNTS
-        LDX     #PCTR
-        BSR     PDAT
-        LDX     TEMP
-        BSR     PRTS
-PNTS    LDX     #SREG
-        BSR     PDAT
-        LDX     #SP
-        TST     TFLAG
+        LDX     #PCTR       ; Output "PC="
+        JSR     OUTSTR
+        LDX     TEMP        ; Restore X
+        JSR     OUT4HS
+PNTS    LDX     #SREG       ; Output "S="
+        JSR     OUTSTR
+        LDX     #SP         ; Load X with saved Stack Pointer location
+        TST     TFLAG       ; Test Trace flag
         BNE     PRINTS
-        BSR     PRTS
+        JSR     OUT4HS
 ;
 ; CHECK IF ANY BREAK POINTS ARE SET
 ;
-        LDAA BKFLG
-        BNE C2
-        LDX PB2
-        STAA 0,X
-        LDAA BKFLG2
-        BEQ C2
-        LDX PC1
-        STAA 0,X
-C2      JMP     CONTRL
+        LDAA    BKFLG       ; Load Breakpoint Flag (zero or saved byte / OpCode)
+;        BNE C2
+        BEQ     C2          ; If no Breakpoint exit to CONTRL
+        LDX     PB2         ; Otherwise, restore the saved byte / OpCode
+        STAA    0,X
+        LDAA    BKFLG2      ; Load Breakpoint 2 flag (zero or saved byte / OpCode)
+        BEQ     C2          ; If no breakpoint 2 exit to CONTRL
+        LDX     PC1         ; Otherwise, restore the save byte / Opcode
+        STAA    0,X
+C2      JMP     CONTRL      ; Exit to CONTRL
 
 ;
-PDAT    JMP     OUTSTR      ; Redirct to OUTSTR routine
+;PDAT    JMP     OUTSTR      ; Redirct to OUTSTR routine
 ;
 ; Set ECHO state
 ;
@@ -442,7 +451,8 @@ PRINTS  LDAB    0,X
         STAB    TEMP
         STAA    TEMP+1
         LDX     #TEMP
-PRTS    JMP     OUT4HS
+        JMP     OUT4HS
+;PRTS    JMP     OUT4HS
 ;
 ; INEEE- Input one character into A register (no parity)
 ;
@@ -469,13 +479,13 @@ OUTEEE1 LDAA    ACIACS      ; Check if transmit register empty
         STAA    ACIADA      ; Output A character
         RTS
 ;
-;  HERE ON JUMP COMMAND
+;  "J" Jump Command - Jump to entered Address
 ;
 JUMP    JSR     OCRLF       ; Output new line
-        LDX #TOADD
-        BSR ENDADD+3
-        LDS #STACK
-        JMP 0,X
+        LDX     #TOADD      ; Point X to "To Addr: " string
+        BSR     OUTADR      ; Input 4 digit Hex Address (to X & ADDRHI/LO)
+        LDS     #STACK      ; Initialise Stack Pointer
+        JMP     0,X         ; Jump to entered Address
 ;
 ;  ASCII IN "@" COMMAND
 ;
@@ -508,18 +518,18 @@ IFILL2  INX                 ; Go to next Address
 ;
 ; Input Address / Address range subroutines
 ;
-BAD2    LDX #FROMAD
-        BRA *+5
-ENDADD  LDX #THRUAD
-        JSR OUTSTR
-        JMP INADDR
-LIMITS  BSR BAD2
+BAD2    LDX     #FROMAD     ; Output "From Addr: " prompt
+        BRA     OUTADR      ;
+ENDADR  LDX     #THRUAD     ; Output "Thru Addr: " prompt
+OUTADR  JSR     OUTSTR
+        JMP     INADDR      ; Input 4 digit Hex Address (to X & ADDRHI/LO)
+LIMITS  BSR     BAD2        ; Get From Address followed by Thru Address
         STX BEGA
-        BSR ENDADD
+        BSR     ENDADR      ;
         STX ENDA
         JMP OCRLF
-ADDR    LDX #ADASC
-        BRA ENDADD+3
+ADDR    LDX     #ADASC      ; Point X to "Break Addr: " string
+        BRA     OUTADR      ; Input 4 digit Hex Address (to X & ADDRHI/LO)
 VALUE   LDX #VALASC
         JSR OUTSTR
         JMP INBYTE
@@ -527,8 +537,8 @@ VALUE   LDX #VALASC
 ; BLOCK MOVE "M" COMMAND
 ;
 MOVE    BSR LIMITS
-        LDX #TOADD
-        BSR ENDADD+3
+        LDX     #TOADD      ; Point X to "To Addr: " string
+        BSR     OUTADR      ; Input 4 digit Hex Address (to X & ADDRHI/LO)
         BSR MOVE2
 CR9     JMP CONTRL
 ;
@@ -597,9 +607,9 @@ TRACE   JSR     BAD2        ; Build Address (From Addr)
         STAB    6,X
         LDAA    ADDRLO
         STAA    7,X
-KONTIN  INC     TFLAG
+KONTIN  INC     TFLAG       ; Increment (set) Trace flag
 RETURN  JSR     PRINT
-        LDX     SP
+        LDX     SP          ; Load X with saved Stack Pointer address
         LDX     6,X
 DISS    STX     PC1         ; Save the Trace Address at PC1
 DISIN   BSR     OCRLF
@@ -757,7 +767,7 @@ NOT1    JSR INEEE
 ;  CHECK INPUT COMMAND
 ;  A, B, C, X, OR S
 ;
-CKCBA   LDX SP
+CKCBA   LDX     SP          ; Load X with saved Stack Pointer address
         INX
         CMPB #$43
         BEQ RDC
@@ -770,7 +780,7 @@ CKCBA   LDX SP
         INX
         CMPB #$58
         BEQ RDX
-        LDX #SP
+        LDX     #SP         ; Load X with saved Stack Pointer location
         CMPB #$53
         BNE RETNOT
 RDX     JSR INBYTE
@@ -785,7 +795,7 @@ RDC     JSR INBYTE
 ;
         BRA NOT1
 RETNOT  JMP CONTRL
-DOT     TST TFLAG
+DOT     TST     TFLAG       ; Test Trace flag
         BNE DOT1
         JMP DISIN
 ;
@@ -824,7 +834,7 @@ ISXD    LDX SP
         STAA PC1
         BRA EXEC
 ;
-NOTJ    LDX SP
+NOTJ    LDX     SP          ; Load X with saved Stack Pointer address
         CMPA #$39
         BNE NOTRTS
 NOTJ1   LDX 8,X
@@ -855,7 +865,7 @@ CKROM   LDAA PC1
 ;
 ;  GET JSR OR JMP
 ;
-        LDX SP
+        LDX     SP          ; Load X with saved Stack Pointer address
         LDAA PB1
         CMPA #$7E
         BEQ NOTJ1
@@ -1054,10 +1064,12 @@ PNTA    FCC "A "                ;
 PNTB    FCC "B "                ;
         FCB EOT
 ;
-CSPRMPT FCC "\rDigiBug v1.01 (H = Help)\r\n"
-        FCB EOT
-PROMPT  FCC "\r\n> "            ;
-    	FCB EOT
+CSTTL   FCC     "\rDigiBug "        ; Cold Start title
+        FCC     VERSTR              ; Version string (defined at start of listing)
+        FCC     " (H = Help)\r\n"   ;
+        FCB     EOT
+PROMPT  FCC     "\r\n> "            ; Warm Start prompt
+    	FCB     EOT
 ;
 BREG    FCC " B="
         FCB EOT
@@ -1247,9 +1259,9 @@ HLPSCR
         FCC "\r\n"
         FCC	" I = Insert / Fill memory    @ = Insert ASCII "
         FCC "\r\n"
-        FCC	" J = Jump to address         1 = Breakpoint 1 "
+        FCC	" J = Jump to address         1 = Set 1 Breakpoint "
         FCC "\r\n"
-        FCC	" K = Continue after break    2 = Breakpoint 2 "
+        FCC	" K = Continue after break    2 = Set 2 Breakpoints "
         FCC "\r\n"
         FCC	" L = Load S-records          * = Restart (reset) "
 CRLFAS  FCC "\r\n"
