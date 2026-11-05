@@ -1,0 +1,123 @@
+Name       BANKED_MEM_EXP.pld;
+Partno     U1;
+Date       10/2026;
+Revision   01;
+Designer   Greg;
+Company    Digicool Things;
+Assembly   None;
+Location   None;
+Device     G16V8S;
+
+/****************************************************************/
+/*                                                              */
+/* Note: For an ATV16V8 in Simple Mode pins 15 and 16           */
+/*  (center macrocells) are permanently configured as           */
+/*  combinatorial outputs.                                      */   
+/*                                                              */
+/****************************************************************/
+
+/*
+ * Inputs: Address Inputs were assigned based on the ECB bus pin sequence (for ease of PCB routing).
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 11 = !ecb_mreq;
+Pin 9 = !ecb_iorq;
+Pin 8 = !ecb_rd;
+Pin 7 = !ecb_wr;
+
+Pin [6, 5, 4, 3, 2, 1] = [a7..a2];
+Pin [19, 18, 17] = [a21..a19];
+
+field io_addr = [a7..a2];
+field mem_addr = [a21..a19];
+
+
+/*
+ * Outputs:  define outputs
+ * Active low pins are inverted at the pin so all signals can be consistently treated as positive logic.
+ *
+ */
+
+Pin 12 = !cs_bnk_en;
+Pin 13 = !cs_bnknum;
+Pin 14 = !cs_rom;
+Pin 15 = !cs_ram0;
+Pin 16 = !cs_ram1;
+
+
+/*
+ *
+ * Logic: Memory Bank Control Logic I/O allocations
+ *
+ */
+
+cs_bnknum = ecb_iorq & ecb_wr & io_addr:[78..7B];
+cs_bnk_en = ecb_iorq & ecb_wr & io_addr:[7C..7F];
+
+
+/*
+ *
+ * Logic: Memory Bank Control Logic ROM allocation
+ *
+ */
+
+cs_rom = ecb_mreq & mem_addr:[380000..3FFFFF];
+
+
+/*
+ * RAM allocation options follow (un-comment only one!)
+ */
+
+/*
+ *
+ * Logic: RAM address space for first Card (0) 
+ *
+ * cs_ram0 : RAM address space (0x000000 - 0x07FFFF), while ecb_mreq asserted.
+ * cs_ram1 : RAM address space (0x080000 - 0x0FFFFF), while ecb_mreq asserted.
+ *
+ */
+
+cs_ram0 = ecb_mreq & mem_addr:[000000..07FFFF];
+cs_ram1 = ecb_mreq & mem_addr:[080000..0FFFFF];
+
+
+/*
+ *
+ * Logic: RAM address space for second Card (1) 
+ *
+ * cs_ram0 : RAM address space (0x100000 - 0x17FFFF), while ecb_mreq asserted.
+ * cs_ram1 : RAM address space (0x180000 - 0x1FFFFF), while ecb_mreq asserted.
+ *
+ */
+/*
+cs_ram0 = ecb_mreq & mem_addr:[100000..17FFFF];
+cs_ram1 = ecb_mreq & mem_addr:[180000..1FFFFF];
+*/
+
+/*
+ *
+ * Logic: RAM address space for third Card (2) 
+ *
+ * cs_ram0 : RAM address space (0x200000 - 0x27FFFF), while ecb_mreq asserted.
+ * cs_ram1 : RAM address space (0x280000 - 0x2FFFFF), while ecb_mreq asserted.
+ *
+ */
+/*
+cs_ram0 = ecb_mreq & mem_addr:[200000..27FFFF];
+cs_ram1 = ecb_mreq & mem_addr:[280000..2FFFFF];
+*/
+
+/*
+ *
+ * Logic: RAM address space for fourth Card (3) 
+ *
+ * cs_ram0 : RAM address space (0x300000 - 0x37FFFF), while ecb_mreq asserted.
+ * cs_ram1 : Unused, so assigned permanently off.
+ *
+ */
+/*
+cs_ram0 = ecb_mreq & mem_addr:[300000..37FFFF];
+cs_ram1 = 'b'0;
+*/
